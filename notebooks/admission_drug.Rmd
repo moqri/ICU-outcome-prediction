@@ -1,0 +1,109 @@
+---
+title: "Exploring admissionDrug Table"
+output: html_notebook
+author:
+  - name: "Mahdi Moqri"
+    url: https://www.moqri.com/
+---
+Adopted from https://github.com/mit-lcp/eicu-code
+
+The following columns are available:
+
+* admissiondrugid - primary key, has no meaning but identifies rows uniquely
+* drugOffset - number of minutes from unit admit time that the admission drug was administered
+* drugEnteredOffset - number of minutes from unit admit time that the admission drug was entered
+* drugNoteType - unique note picklist types e.g.: Comprehensive Progress Admission Intubation
+* specialtyType - physician specialty picklist types e.g.: anesthesiology gastroenterology oncology
+* userType - who documented the drug from eCareManager user picklist types e.g.: eICU Physician, Nurse, Attending Physician
+* rxincluded - Does the Note have associated Rx data: True or False
+* writtenIneICU - Was the Note written in the eICU: True or False
+* drugName - name of the selected admission drug e.g.: POTASSIUM CHLORIDE/D5NS METAXALONE PRAVACHOL
+* drugDosage - dosage of the admission drug e.g.: 20.0000 400.000
+* drugUnit - picklist units of the admission drug e.g.: mg mg/kg patch
+* drugAdmitFrequency - picklist frequency with which the admission drug is administred e.g.: PRN twice a day at bedtime
+* drughiclseqno - a code representing the drug (hierarchical ingredient code list, HICL)
+
+We recommend configuring the `config.ini` file to allow for connection to the database without specifying your password each time.
+
+```{r include=FALSE}
+data_folder='/Users/mahdimoqri/data/eicu/csv'
+```
+
+### Loading libraries
+```{r message=FALSE}
+library(data.table)
+library(dplyr)
+library(magrittr)
+library(plyr)
+
+```
+
+### Examining the table
+```{r}
+# data_folder is the local path to your data
+df=fread(file.path(data_folder,'admissiondrug.csv'))
+head(df)
+```
+
+### Examine a single patient¶
+```{r}
+patientunitstayid_ = 2704494
+df_patientunitstayid=df %>% subset (patientunitstayid==patientunitstayid_)
+head(df_patientunitstayid)
+cols = c('admissiondrugid','patientunitstayid','drugoffset','drugenteredoffset','drugname','drughiclseqno')
+df_patientunitstayid %>% select (cols)
+```
+
+Here we can see that these drugs were documented 2153 minutes (1.5 days) after ICU admission, but administered 87132 minutes (60 days) *before* ICU admission (thus, the negative offset). Since it's reasonable to assume the patient is still taking the drug (as this is the admissiondrug table), `drugoffset` can likely be treated as a start time for a prescription of the drug.
+
+### Identifying patients admitted on a single drug
+Let's look for patients who were admitted on Zaroxolyn.
+
+```{r}
+drug = 'ZAROXOLYN'
+cols=c('admissiondrugid', 'patientunitstayid'
+  , 'drugoffset', 'drugenteredoffset'
+  , 'drugname', 'drughiclseqno')
+df_drug_name = df %>% subset (drugname==drug) %>% select (cols)
+cat(length(unique(df_drug_name$patientunitstayid)),'unit stays with', drug)
+```
+
+Instead of using the drug name, we could try to use the HICL code.
+
+```{r}
+hicl = 3663
+df_drug_hicl = df %>% subset (drughiclseqno==hicl) %>% select (cols)
+cat(length(unique(df_drug_hicl$patientunitstayid)),'unit stays with HICL =', hicl)
+```
+
+
+As we can see, using the HICL returned many more observations. Let's take a look at a few:
+
+```{r}
+# rows in HICL which are *not* in the drug dataframe
+idx = setdiff(df_drug_hicl$admissiondrugid,df_drug_name$admissiondrugid)
+# count the drug names
+table(df_drug_hicl %>% subset (admissiondrugid %in% idx) %>% select(drugname))
+```
+
+All the rows use the drug name "Metolazone". Metolazone is the generic name for the brand Zaroxolyn. This demonstrates the utility of using HICL codes to identify drugs - synonyms like these are very common and can be tedious to find.
+
+### Hospitals with data available¶
+```{r}
+patient=fread(file.path(data_folder,'patient.csv'))
+
+
+patient_admission=patient %>% left_join(df) 
+patient_group=patient_admission %>% group_by(hospitalid) %>% tally(name = "patients")
+df_group=patient_admission %>% subset(!is.na(admissiondrugid)) %>% group_by(hospitalid) %>% tally(name = "patients")
+
+hospitals= patient_group %>% full_join(gf_group)
+hospitals=hospitals[order(-hospitals$drugs),]
+hospitals=hospitals %>% mutate (data_completion=drugs/patients*100)
+head(hospitals)
+hospitals[is.na(hospitals)] = 0
+hist(hospitals$data_completion,xlab = 'Number of hospitals', ylab = 'Percent of patients with data')
+```
+
+As is common in eICU-CRD, there are a subset of hospitals who routinely utilize this portion of the medical record (and thus have 90-100% data completion), while there are other hospitals who rarely use this interface and thus have poor data completion (0-10%).
+
