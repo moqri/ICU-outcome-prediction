@@ -49,9 +49,9 @@ kable(head(df))
 ```{r}
 patientunitstayid_ = 2704494
 df_patientunitstayid=df %>% subset (patientunitstayid==patientunitstayid_)
-head(df_patientunitstayid)
+kable(head(df_patientunitstayid))
 cols = c('admissiondrugid','patientunitstayid','drugoffset','drugenteredoffset','drugname','drughiclseqno')
-df_patientunitstayid %>% select (cols)
+kable(head(df_patientunitstayid %>% select (cols)))
 ```
 
 Here we can see that these drugs were documented 2153 minutes (1.5 days) after ICU admission, but administered 87132 minutes (60 days) *before* ICU admission (thus, the negative offset). Since it's reasonable to assume the patient is still taking the drug (as this is the admissiondrug table), `drugoffset` can likely be treated as a start time for a prescription of the drug.
@@ -100,7 +100,7 @@ df_group=patient_admission %>% subset(!is.na(admissiondrugid)) %>% group_by(hosp
 hospitals= patient_group %>% full_join(df_group)
 hospitals=hospitals[order(-hospitals$drugs),]
 hospitals=hospitals %>% mutate (data_completion=drugs/patients*100)
-head(hospitals)
+kable(head(hospitals))
 hospitals[is.na(hospitals)] = 0
 hist(hospitals$data_completion,xlab = 'Number of hospitals', ylab = 'Percent of patients with data')
 ```
