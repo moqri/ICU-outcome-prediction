@@ -1,6 +1,7 @@
 Exploring admissionDrug Table
 ================
-true
+
+Author: [Mahdi Moqri](https://www.moqri.com/)
 
 Adopted from <https://github.com/mit-lcp/eicu-code>
 
@@ -39,6 +40,7 @@ library(data.table)
 library(dplyr)
 library(magrittr)
 library(plyr)
+library(knitr)
 ```
 
 ### Examining the table
@@ -46,30 +48,17 @@ library(plyr)
 ``` r
 # data_folder is the local path to your data
 df=fread(file.path(data_folder,'admissiondrug.csv'))
-head(df)
+kable(head(df))
 ```
 
-    ##    admissiondrugid patientunitstayid drugoffset drugenteredoffset drugnotetype
-    ## 1:         1589228            242954         64                79    Admission
-    ## 2:         2063596            243285         29                39    Admission
-    ## 3:         2063595            243285         29                39    Admission
-    ## 4:         2063590            243285         29                39    Admission
-    ## 5:         2063594            243285         29                39    Admission
-    ## 6:         2063593            243285         29                39    Admission
-    ##    specialtytype  usertype rxincluded writtenineicu           drugname
-    ## 1:   eCM Primary THC Nurse       TRUE          TRUE            ELIQUIS
-    ## 2:   eCM Primary THC Nurse      FALSE          TRUE      VICTOZA 2-PAK
-    ## 3:   eCM Primary THC Nurse      FALSE          TRUE POTASSIUM CHLORIDE
-    ## 4:   eCM Primary THC Nurse      FALSE          TRUE     CITALOPRAM HBR
-    ## 5:   eCM Primary THC Nurse      FALSE          TRUE         OMEPRAZOLE
-    ## 6:   eCM Primary THC Nurse      FALSE          TRUE           NAPROXEN
-    ##    drugdosage drugunit drugadmitfrequency drughiclseqno
-    ## 1:          0                                     37792
-    ## 2:          0                                     36436
-    ## 3:          0                                       549
-    ## 4:          0                                     10321
-    ## 5:          0                                      4673
-    ## 6:          0                                      3727
+| admissiondrugid | patientunitstayid | drugoffset | drugenteredoffset | drugnotetype | specialtytype | usertype  | rxincluded | writtenineicu | drugname           | drugdosage | drugunit | drugadmitfrequency | drughiclseqno |
+| --------------: | ----------------: | ---------: | ----------------: | :----------- | :------------ | :-------- | :--------- | :------------ | :----------------- | ---------: | :------- | :----------------- | ------------: |
+|         1589228 |            242954 |         64 |                79 | Admission    | eCM Primary   | THC Nurse | TRUE       | TRUE          | ELIQUIS            |          0 |          |                    |         37792 |
+|         2063596 |            243285 |         29 |                39 | Admission    | eCM Primary   | THC Nurse | FALSE      | TRUE          | VICTOZA 2-PAK      |          0 |          |                    |         36436 |
+|         2063595 |            243285 |         29 |                39 | Admission    | eCM Primary   | THC Nurse | FALSE      | TRUE          | POTASSIUM CHLORIDE |          0 |          |                    |           549 |
+|         2063590 |            243285 |         29 |                39 | Admission    | eCM Primary   | THC Nurse | FALSE      | TRUE          | CITALOPRAM HBR     |          0 |          |                    |         10321 |
+|         2063594 |            243285 |         29 |                39 | Admission    | eCM Primary   | THC Nurse | FALSE      | TRUE          | OMEPRAZOLE         |          0 |          |                    |          4673 |
+|         2063593 |            243285 |         29 |                39 | Admission    | eCM Primary   | THC Nurse | FALSE      | TRUE          | NAPROXEN           |          0 |          |                    |          3727 |
 
 ### Examine a single patient¶
 

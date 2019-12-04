@@ -1,10 +1,9 @@
 ---
 title: "Exploring admissionDrug Table"
 output: rmarkdown::github_document
-author:
-  - name: "Mahdi Moqri"
-    url: https://www.moqri.com/
 ---
+Author: [Mahdi Moqri](https://www.moqri.com/)
+
 Adopted from https://github.com/mit-lcp/eicu-code
 
 The following columns are available:
@@ -35,15 +34,16 @@ library(data.table)
 library(dplyr)
 library(magrittr)
 library(plyr)
-
+library(knitr)
 ```
 
 ### Examining the table
 ```{r}
 # data_folder is the local path to your data
 df=fread(file.path(data_folder,'admissiondrug.csv'))
-head(df)
+kable(head(df))
 ```
+
 
 ### Examine a single patient¶
 ```{r}
