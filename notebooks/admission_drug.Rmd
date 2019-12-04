@@ -1,6 +1,6 @@
 ---
 title: "Exploring admissionDrug Table"
-output: html_notebook
+output: rmarkdown::github_document
 author:
   - name: "Mahdi Moqri"
     url: https://www.moqri.com/
