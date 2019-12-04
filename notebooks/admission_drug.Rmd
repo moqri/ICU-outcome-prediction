@@ -95,9 +95,9 @@ patient=fread(file.path(data_folder,'patient.csv'))
 
 patient_admission=patient %>% left_join(df) 
 patient_group=patient_admission %>% group_by(hospitalid) %>% tally(name = "patients")
-df_group=patient_admission %>% subset(!is.na(admissiondrugid)) %>% group_by(hospitalid) %>% tally(name = "patients")
+df_group=patient_admission %>% subset(!is.na(admissiondrugid)) %>% group_by(hospitalid) %>% tally(name = "drugs")
 
-hospitals= patient_group %>% full_join(gf_group)
+hospitals= patient_group %>% full_join(df_group)
 hospitals=hospitals[order(-hospitals$drugs),]
 hospitals=hospitals %>% mutate (data_completion=drugs/patients*100)
 head(hospitals)
