@@ -1,4 +1,4 @@
-Exploring Patient Table
+Patient Table Starter Code
 ================
 
 Author: [Mahdi Moqri](https://www.moqri.com/)
