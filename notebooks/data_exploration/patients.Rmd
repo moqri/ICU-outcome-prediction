@@ -4,8 +4,6 @@ output: rmarkdown::github_document
 ---
 Author: [Mahdi Moqri](https://www.moqri.com/)
 
-Adopted from https://github.com/mit-lcp/eicu-code
-
 The patinet table is a core part of the eICU-CRD and contains all information related to tracking patient unit stays. The table also contains patient demographics and hospital level information.
 
 ```{r include=FALSE}
@@ -19,6 +17,8 @@ library(dplyr)
 library(magrittr)
 library(plyr)
 library(knitr)
+library(ggplot2)
+
 ```
 
 ### Examining the patient table
@@ -27,37 +27,43 @@ The uniquePid column identifies a single patient across multiple stays. Let's lo
 ```{r}
 # data_folder is the local path to your data
 df=fread(file.path(data_folder,'patient.csv'))
-kable(head(df))
+cols=c('uniquepid', 'gender', 'age', 'ethnicity','hospitaldischargestatus')
+kable(head(df %>% select(cols)))
 ```
-
-
-### Examine a single patient¶
+### Age
 ```{r}
-uniquepid_ = '002-33870'
-kable(df %>% subset(uniquepid==uniquepid_))
+df %<>% mutate(age_impute= (ifelse(age=='> 89',90, as.numeric(age))))
+age=df[!is.na(df$age_impute),]$age_impute
+hist(age)
+median(age)
 ```
 
-Here we see two unit stays for a single patient. Note also that both unit stays have the same patienthealthsystemstayid - this indicates that they occurred within the same hospitalization.
-
-We can see the unitstaytype was 'admit' for one stay, and 'stepdown/other' for another. Other columns can give us more information.
-
-### Identifying patients admitted on a single drug
-Let's look for patients who were admitted on Zaroxolyn.
-
+### Gender
 ```{r}
-cols=c('patientunitstayid', 'wardid', 'unittype', 'unitstaytype', 'hospitaladmitoffset', 'unitdischargeoffset')
-kable(df %>% subset(uniquepid==uniquepid_) %>% select(cols) )
+gender=table(df$gender)[c('Female','Male')]
+gender
+pie(gender)
+
 ```
 
-Note that it's not explicitly obvious which stay occurred first. Earlier stays will be closer to hospital admission, and therefore have a higher hospitaladmitoffset. Above, the stay with a hospitaladmitoffset of -14 was first (occurring 14 minutes after hospital admission), followed by the next stay with a hospitaladmitoffset of -22 (which occurred 22 minutes after hospital admission). Practically, we wouldn't consider the first admission a "real" ICU stay, and it's likely an idiosyncrasy of the administration system at this particular hospital. Notice how both rows have the same wardid.
-
-### Patients' ages
-
-As ages over 89 are required to be deidentified by HIPAA, the age column is actually a string field, with ages over 89 replaced with the string value '> 89'.
-
+### Ethnicity
 ```{r}
-kable(head(df %>% group_by(age) %>% tally() %>% arrange(-n)))
+df_ethnicity =df %>% subset(ethnicity!='')
+ethnicity=df_ethnicity$ethnicity
+kable(table(ethnicity))
+barchart(ethnicity)
+```
+
+### Status at discharge
+```{r}
+unit_discharge=df$unitdischargestatus
+table(unit_discharge)
+pie(table(unit_discharge))
+kable(table(hostpial_discharge))
+pie(table(hostpial_discharge))
 ```
 
 
-As is common in eICU-CRD, there are a subset of hospitals who routinely utilize this portion of the medical record (and thus have 90-100% data completion), while there are other hospitals who rarely use this interface and thus have poor data completion (0-10%).
+
+
+
