@@ -1,0 +1,70 @@
+---
+title: "04-Exploring disease"
+output: html_document
+---
+
+
+# Disease
+Figure below compares morality rate in black people versus white people in different ages. Although the number of black people is less than white people in data, we can see that at each age category, the rate of morality in black people is more than white people.
+
+##Race-Outcome
+```{r kkkkkkkk}
+df_ethnicity =df %>%subset(ethnicity!='' )%>%group_by(ethnicity)%>%
+   summarise(expired=sum(hospitaldischargestatus=="Expired"),total=sum(hospitaldischargestatus %in%c("Expired","Alive")),percentage=expired/total*100)
+ggplot(df_ethnicity, aes(x = ethnicity, y = percentage)) +
+  geom_bar(fill = "#0073C2FF", stat = "identity") +
+  geom_text(aes(label = ethnicity), vjust = -0.3) 
+```
+
+
+```{r ethnicityhhhhhhh, message=FALSE, warning=FALSE, echo=FALSE}
+df_ethnicity =df %>% subset(ethnicity!='')
+
+
+df_ethnicity=as.data.frame(table(df_ethnicity$ethnicity))
+df_ethnicity=df_ethnicity %>%
+arrange(desc(Freq)) %>%
+mutate(percentage = percent(Freq / sum(Freq))) 
+
+
+ggplot(df_ethnicity, aes(x = "", y = Freq, fill = fct_inorder(Var1))) +
+       geom_bar(width = 1, stat = "identity") +
+       coord_polar("y", start = 0) +
+  xlab("")+ylab("percentage")+
+  theme(axis.text.x=element_blank()) + scale_fill_brewer(palette="Greens")+
+       geom_label_repel(aes(label = percentage), size=5, show.legend = F, nudge_x = 1) +
+       guides(fill = guide_legend(title = "Ethnicity"))
+```
+
+Figure below compares morality rate in black people versus white people in different ages. Although the number of black people is less than white people in data, we can see that at each age category, the rate of morality in black people is more than white people.
+
+```{r ethnicity kkkkkkkkkkkkk,message=FALSE, warning=FALSE, echo=FALSE}
+ ethnicityTable=df %>%subset(ethnicity!='')%>% group_by(ethnicity, age_impute)%>%
+   summarise(expired=sum(hospitaldischargestatus=="Expired"),total=sum(hospitaldischargestatus %in%c("Expired","Alive")),percentage=expired/total*100)
+ethnicityTable<-filter (ethnicityTable, ethnicity %in% c("Caucasian","African American"))
+ethnicityTable<-na.omit(ethnicityTable)
+
+b <- c(15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90)
+names=c("15-20","20-25","25-30","30-35","35-40","40-45","45-50","50-55","55-60","60-65","65-70","70-75","75-80","80-85","85-90")
+ethnicityTable$BreakedAge=cut(ethnicityTable$age_impute, breaks = b, labels = names)
+ethnicityTable<-na.omit(ethnicityTable)
+
+ethnicitySecondTable=ethnicityTable %>% group_by(BreakedAge,ethnicity) %>%
+  summarise(Newexpired=sum(expired),Newtotal=sum(total),Newpercentage=Newexpired/Newtotal*100)
+
+
+ggplot(ethnicitySecondTable,aes(x=BreakedAge, y=Newpercentage,width=.45,fill=factor(ethnicity)))+
+  geom_bar(stat="identity",position="dodge")+
+  
+  guides(fill=guide_legend(title="ethnicity"))+
+scale_fill_manual("legend", values = c("Caucasian" = "#00AFBB", "African American" = "#FF6666"))+
+  xlab("Age")+ylab("Mortality Rate")+theme(axis.text.x = element_text(angle = 90, hjust = 1, size=10,color="black"))
+
+
+```
+
+
+
+
+
+

@@ -4,11 +4,11 @@
 
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <title>ICU analytics</title>
-  <meta name="description" content="ICU analytics" />
+  <title>4 Disease | ICU analytics</title>
+  <meta name="description" content="4 Disease | ICU analytics" />
   <meta name="generator" content="bookdown 0.16 and GitBook 2.6.7" />
 
-  <meta property="og:title" content="ICU analytics" />
+  <meta property="og:title" content="4 Disease | ICU analytics" />
   <meta property="og:type" content="book" />
   
   
@@ -16,7 +16,7 @@
   
 
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="ICU analytics" />
+  <meta name="twitter:title" content="4 Disease | ICU analytics" />
   
   
   
@@ -30,8 +30,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   
   
-
-<link rel="next" href="exploring-the-patient-table.html"/>
+<link rel="prev" href="racial-bias.html"/>
+<link rel="next" href="hospital.html"/>
 <script src="libs/jquery-2.2.3/jquery.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
@@ -155,15 +155,19 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
           <div class="page-inner">
 
             <section class="normal" id="section-">
-<div id="header">
-<h1 class="title">ICU analytics</h1>
-<p class="author"><em>Atefeh Alizadeh</em></p>
-</div>
-<div id="introduction" class="section level1">
-<h1><span class="header-section-number">1</span> Introduction</h1>
-<p>eICU Collaborative Research Database contains more than 200,000 ICU addmission monitored by eICU Programs
-across the United States. The number of futures that are calculated is huge and data is saved in over 35 tables. The moset important tables include table of patients, hospitals, laboratory tests, etc. Most of the data are saved automatically but there are some futured that are entered manually according to care givers’ opinion.
-In this book, we first investigate the patient table since this table is the most important one and all other tables are connected to that.</p>
+<div id="disease" class="section level1">
+<h1><span class="header-section-number">4</span> Disease</h1>
+<p>Figure below compares morality rate in black people versus white people in different ages. Although the number of black people is less than white people in data, we can see that at each age category, the rate of morality in black people is more than white people.</p>
+<p>##Race-Outcome</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb1-1" title="1">df_ethnicity =df <span class="op">%&gt;%</span><span class="kw">subset</span>(ethnicity<span class="op">!=</span><span class="st">&#39;&#39;</span> )<span class="op">%&gt;%</span><span class="kw">group_by</span>(ethnicity)<span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb1-2" title="2"><span class="st">   </span><span class="kw">summarise</span>(<span class="dt">expired=</span><span class="kw">sum</span>(hospitaldischargestatus<span class="op">==</span><span class="st">&quot;Expired&quot;</span>),<span class="dt">total=</span><span class="kw">sum</span>(hospitaldischargestatus <span class="op">%in%</span><span class="kw">c</span>(<span class="st">&quot;Expired&quot;</span>,<span class="st">&quot;Alive&quot;</span>)),<span class="dt">percentage=</span>expired<span class="op">/</span>total<span class="op">*</span><span class="dv">100</span>)</a>
+<a class="sourceLine" id="cb1-3" title="3"><span class="kw">ggplot</span>(df_ethnicity, <span class="kw">aes</span>(<span class="dt">x =</span> ethnicity, <span class="dt">y =</span> percentage)) <span class="op">+</span></a>
+<a class="sourceLine" id="cb1-4" title="4"><span class="st">  </span><span class="kw">geom_bar</span>(<span class="dt">fill =</span> <span class="st">&quot;#0073C2FF&quot;</span>, <span class="dt">stat =</span> <span class="st">&quot;identity&quot;</span>) <span class="op">+</span></a>
+<a class="sourceLine" id="cb1-5" title="5"><span class="st">  </span><span class="kw">geom_text</span>(<span class="kw">aes</span>(<span class="dt">label =</span> ethnicity), <span class="dt">vjust =</span> <span class="fl">-0.3</span>) </a></code></pre></div>
+<p><img src="_main_files/figure-html/kkkkkkkk-1.png" width="672" /></p>
+<p><img src="_main_files/figure-html/ethnicityhhhhhhh-1.png" width="672" /></p>
+<p>Figure below compares morality rate in black people versus white people in different ages. Although the number of black people is less than white people in data, we can see that at each age category, the rate of morality in black people is more than white people.</p>
+<p><img src="_main_files/figure-html/ethnicity%20kkkkkkkkkkkkk-1.png" width="672" /></p>
 
 </div>
             </section>
@@ -171,8 +175,8 @@ In this book, we first investigate the patient table since this table is the mos
           </div>
         </div>
       </div>
-
-<a href="exploring-the-patient-table.html" class="navigation navigation-next navigation-unique" aria-label="Next page"><i class="fa fa-angle-right"></i></a>
+<a href="racial-bias.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
+<a href="hospital.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
     </div>
   </div>
 <script src="libs/gitbook-2.6.7/js/app.min.js"></script>

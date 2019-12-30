@@ -1,28 +1,116 @@
 ---
-title: "02-intro"
+title: "02-Exploring Patient Table"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r setup, message=FALSE, warning=FALSE, echo=FALSE}
+library(data.table)
+library(dplyr)
+library(magrittr)
+#library(plyr)
+library(knitr)
+library(ggplot2)
+library(visreg)
+library(rpart)
+library(scales)
+library(ggrepel)
+library(forcats)
+library(gtable)
+library(stringr)
+library(grid)
 ```
-# Intro
-## R Markdown
+# Exploring the patient table
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+The patient table is a core part of the eICU-CRD and contains all information related to tracking patient unit stays. The table also contains patient demographics and hospital-level information.
+The uniquePid column identifies a single patient across multiple stays. Let's look at a single uniquepid.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```{r datareading, message=FALSE, warning=FALSE, echo=FALSE}
+# data_folder is the local path to your data
+df=fread('patient.csv')
+cols=c('uniquepid', 'gender', 'age', 'ethnicity','hospitaldischargestatus')
+kable(head(df %>% select(cols)))
 
-```{r cars}
-summary(cars)
+df %<>% mutate(age_impute= (ifelse(age=='> 89',90, as.numeric(age))))
+age=df[!is.na(df$age_impute),]$age_impute
 ```
 
-## Including Plots
+Age, gender and ethnicity are the demographic factors of the patient's table. We assume that people with age of more than 89 have 90 years old. Hospital discharge status is another important variable of the table. After leaving the hospital, patients are either dead or alive. We want to explore the relationship between the patient's hospital discharge status and their demographic factors:
 
-You can also embed plots, for example:
+## Age
+In this section, we can see the number of patient in different age category as well as their hospital discharge status. As you can see, most of the patients are alive but one should notice that the alive patients may go back to the hospital again. As we expected, by increasing age, mortality also increases.
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r Age, message=FALSE, warning=FALSE, echo=FALSE}
+
+b <- c(15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90)
+names=c("15-20","20-25","25-30","30-35","35-40","40-45","45-50","50-55","55-60","60-65","65-70","70-75","75-80","80-85","85-90")
+df_hist =df %>%subset(hospitaldischargestatus %in% c("Expired","Alive") )
+df_hist$BreakedAge=cut(df_hist$age_impute, breaks = b, labels = names)
+df_hist<-na.omit(df_hist)
+SecondHistTable=df_hist %>% group_by(BreakedAge) 
+
+ggplot(SecondHistTable, aes(x=BreakedAge, fill=hospitaldischargestatus)) +
+geom_histogram(stat="count")  +
+  xlab("Age")+ylab("Count of Patients")+
+guides(fill=guide_legend(title="Discharge status"))+
+scale_fill_manual("legend", values = c("Alive" = "#00AFBB", "Expired" = "#FF6666"))+theme(axis.text.x = element_text(angle = 90, hjust = 1, size=10,color="black"))
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Gender
+In this section, we want to compare the mortality rate in different Genders. As you can see, the rate of mortality in men is higher than women in very old and very young age.
+```{r ageGenderOutcome, ,message=FALSE, warning=FALSE, echo=FALSE}
+
+
+df = df %>% mutate(hospitaldischargestatusId = ifelse(hospitaldischargestatus  %in% c("Expired"), 0, 1))
+dfNewTable=df%>%select(c("hospitaldischargestatusId","gender","age_impute"))
+NewTableAge=dfNewTable %>% group_by(age_impute) %>%
+  summarise(expired=sum(hospitaldischargestatusId=="0"),total=sum(hospitaldischargestatusId %in%c("0","1")),percentage=expired/total*100) 
+NewTableAge<-na.omit(NewTableAge)
+NewTableAgeGender=dfNewTable %>% group_by(age_impute, gender) %>%
+  summarise(expired=sum(hospitaldischargestatusId=="0"),total=sum(hospitaldischargestatusId %in%c("0","1")),percentage=expired/total*100) 
+NewTableAgeGender<-na.omit(NewTableAgeGender)
+NewTableAgeGender<-filter (NewTableAgeGender, gender %in% c("Male","Female"))
+b <- c(15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90)
+names=c("15-20","20-25","25-30","30-35","35-40","40-45","45-50","50-55","55-60","60-65","65-70","70-75","75-80","80-85","85-90")
+NewTableAgeGender$BreakedAge=cut(NewTableAgeGender$age_impute, breaks = b, labels = names)
+NewTableAgeGender<-na.omit(NewTableAgeGender)
+SecondTable=NewTableAgeGender %>% group_by(BreakedAge,gender) %>%
+  summarise(expiredTotal=sum(percentage)/5)
+SecondTable<-na.omit(SecondTable)
+
+ggplot(SecondTable,aes(x=BreakedAge, y=expiredTotal,width=.45,fill=factor(gender)))+
+  geom_bar(stat="identity",position="dodge")+
+  
+  guides(fill=guide_legend(title="Gender"))+
+scale_fill_manual("legend", values = c("Male" = "#00AFBB", "Female" = "#FF6666"))+
+  xlab("Age")+ylab("Mortality Rate")+theme(axis.text.x = element_text(angle = 90, hjust = 1, size=10,color="black"))
+```
+
+## Ethnicity
+Ethnicity is another important factor to study. The goal of studying the ethnicity is to know the number of patients at each category and their mortality ratio. As you can see, Caucasians and African American are the two biggest categories and include almost 90 % of the data. We will investigate these two categories further in third chapter to see their morality rate in different ages.
+
+```{r ethnicity, message=FALSE, warning=FALSE, echo=FALSE}
+df_ethnicity =df %>% subset(ethnicity!='')
+
+
+df_ethnicity=as.data.frame(table(df_ethnicity$ethnicity))
+df_ethnicity=df_ethnicity %>%
+arrange(desc(Freq)) %>%
+mutate(percentage = percent(Freq / sum(Freq))) 
+
+
+ggplot(df_ethnicity, aes(x = "", y = Freq, fill = fct_inorder(Var1))) +
+       geom_bar(width = 1, stat = "identity") +
+       coord_polar("y", start = 0) +
+  xlab("")+ylab("percentage")+
+  theme(axis.text.x=element_blank()) + scale_fill_brewer(palette="Greens")+
+       geom_label_repel(aes(label = percentage), size=5, show.legend = F, nudge_x = 1) +
+       guides(fill = guide_legend(title = "Ethnicity"))
+```
+
+
+
+
+
+
+

@@ -1,14 +1,14 @@
 ---
-title: "A Book"
-author: "Frida Gomam"
+title: "ICU analytics"
+author: "Atefeh Alizadeh"
 site: bookdown::bookdown_site
 documentclass: book
 output:
   bookdown::gitbook: default
 ---
 
-# Hello World
+# Introduction
 
-Hi.
-
-Bye.
+eICU Collaborative Research Database contains more than 200,000 ICU addmission monitored by eICU Programs
+across the United States. The number of futures that are calculated is huge and data is saved in over 35 tables. The moset important tables include table of patients, hospitals, laboratory tests, etc. Most of the data are saved automatically but there are some futured that are entered manually according to care givers' opinion. 
+In this book, we first investigate the patient table since this table is the most important one and all other tables are connected to that.

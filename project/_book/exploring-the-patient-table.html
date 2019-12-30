@@ -4,11 +4,11 @@
 
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <title>ICU analytics</title>
-  <meta name="description" content="ICU analytics" />
+  <title>2 Exploring the patient table | ICU analytics</title>
+  <meta name="description" content="2 Exploring the patient table | ICU analytics" />
   <meta name="generator" content="bookdown 0.16 and GitBook 2.6.7" />
 
-  <meta property="og:title" content="ICU analytics" />
+  <meta property="og:title" content="2 Exploring the patient table | ICU analytics" />
   <meta property="og:type" content="book" />
   
   
@@ -16,7 +16,7 @@
   
 
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="ICU analytics" />
+  <meta name="twitter:title" content="2 Exploring the patient table | ICU analytics" />
   
   
   
@@ -30,8 +30,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   
   
-
-<link rel="next" href="exploring-the-patient-table.html"/>
+<link rel="prev" href="index.html"/>
+<link rel="next" href="racial-bias.html"/>
 <script src="libs/jquery-2.2.3/jquery.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
@@ -155,24 +155,90 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
           <div class="page-inner">
 
             <section class="normal" id="section-">
-<div id="header">
-<h1 class="title">ICU analytics</h1>
-<p class="author"><em>Atefeh Alizadeh</em></p>
+<div id="exploring-the-patient-table" class="section level1">
+<h1><span class="header-section-number">2</span> Exploring the patient table</h1>
+<p>The patient table is a core part of the eICU-CRD and contains all information related to tracking patient unit stays. The table also contains patient demographics and hospital-level information.
+The uniquePid column identifies a single patient across multiple stays. Let’s look at a single uniquepid.</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">uniquepid</th>
+<th align="left">gender</th>
+<th align="left">age</th>
+<th align="left">ethnicity</th>
+<th align="left">hospitaldischargestatus</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">002-34851</td>
+<td align="left">Female</td>
+<td align="left">70</td>
+<td align="left">Caucasian</td>
+<td align="left">Expired</td>
+</tr>
+<tr class="even">
+<td align="left">002-33870</td>
+<td align="left">Female</td>
+<td align="left">52</td>
+<td align="left">Caucasian</td>
+<td align="left">Alive</td>
+</tr>
+<tr class="odd">
+<td align="left">002-33870</td>
+<td align="left">Female</td>
+<td align="left">52</td>
+<td align="left">Caucasian</td>
+<td align="left">Alive</td>
+</tr>
+<tr class="even">
+<td align="left">002-5276</td>
+<td align="left">Male</td>
+<td align="left">68</td>
+<td align="left">Caucasian</td>
+<td align="left">Alive</td>
+</tr>
+<tr class="odd">
+<td align="left">002-37665</td>
+<td align="left">Male</td>
+<td align="left">71</td>
+<td align="left">Caucasian</td>
+<td align="left">Alive</td>
+</tr>
+<tr class="even">
+<td align="left">002-37665</td>
+<td align="left">Male</td>
+<td align="left">71</td>
+<td align="left">Caucasian</td>
+<td align="left">Alive</td>
+</tr>
+</tbody>
+</table>
+<p>Age, gender and ethnicity are the demographic factors of the patient’s table. We assume that people with age of more than 89 have 90 years old. Hospital discharge status is another important variable of the table. After leaving the hospital, patients are either dead or alive. We want to explore the relationship between the patient’s hospital discharge status and their demographic factors:</p>
+<div id="age" class="section level2">
+<h2><span class="header-section-number">2.1</span> Age</h2>
+<p>In this section, we can see the number of patient in different age category as well as their hospital discharge status. As you can see, most of the patients are alive but one should notice that the alive patients may go back to the hospital again. As we expected, by increasing age, mortality also increases.</p>
+<p><img src="_main_files/figure-html/Age-1.png" width="672" /></p>
 </div>
-<div id="introduction" class="section level1">
-<h1><span class="header-section-number">1</span> Introduction</h1>
-<p>eICU Collaborative Research Database contains more than 200,000 ICU addmission monitored by eICU Programs
-across the United States. The number of futures that are calculated is huge and data is saved in over 35 tables. The moset important tables include table of patients, hospitals, laboratory tests, etc. Most of the data are saved automatically but there are some futured that are entered manually according to care givers’ opinion.
-In this book, we first investigate the patient table since this table is the most important one and all other tables are connected to that.</p>
+<div id="gender" class="section level2">
+<h2><span class="header-section-number">2.2</span> Gender</h2>
+<p>In this section, we want to compare the mortality rate in different Genders. As you can see, the rate of mortality in men is higher than women in very old and very young age.
+<img src="_main_files/figure-html/ageGenderOutcome,%20-1.png" width="672" /></p>
+</div>
+<div id="ethnicity" class="section level2">
+<h2><span class="header-section-number">2.3</span> Ethnicity</h2>
+<p>Ethnicity is another important factor to study. The goal of studying the ethnicity is to know the number of patients at each category and their mortality ratio. As you can see, Caucasians and African American are the two biggest categories and include almost 90 % of the data. We will investigate these two categories further in third chapter to see their morality rate in different ages.</p>
+<p><img src="_main_files/figure-html/ethnicity-1.png" width="672" /></p>
 
+</div>
 </div>
             </section>
 
           </div>
         </div>
       </div>
-
-<a href="exploring-the-patient-table.html" class="navigation navigation-next navigation-unique" aria-label="Next page"><i class="fa fa-angle-right"></i></a>
+<a href="index.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
+<a href="racial-bias.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
     </div>
   </div>
 <script src="libs/gitbook-2.6.7/js/app.min.js"></script>
