@@ -1,0 +1,65 @@
+---
+title: "Exploring Patient Table"
+output: rmarkdown::github_document
+---
+Author: [Mahdi Moqri](https://www.moqri.com/)
+
+The patinet table is a core part of the eICU-CRD and contains all information related to tracking patient unit stays. The table also contains patient demographics and hospital level information.
+
+
+### Loading libraries
+```{r message=FALSE}
+library(data.table)
+library(dplyr)
+library(magrittr)
+#library(plyr)
+library(knitr)
+library(ggplot2)
+library(visreg)
+library(rpart)
+library("caret")
+library(rpart.plot)
+```
+
+### Examining the patient table
+The uniquePid column identifies a single patient across multiple stays. Let's look at a single uniquepid.
+
+```{r}
+# data_folder is the local path to your data
+dfPatient=fread('patient.csv')
+dfHospital=fread('hospital.csv')
+dfdiagnosis=fread('diagnosis.csv')
+df= merge(x = dfPatient, y = dfHospital, by = "hospitalid", all = TRUE)
+
+
+```
+### Age
+```{r message=FALSE, warning=FALSE}
+df %<>% mutate(age_impute= (ifelse(age=='> 89',90, as.numeric(age))))
+age=df[!is.na(df$age_impute),]$age_impute
+```
+
+
+##Hospital vs Region
+```{r  HospitalRegion ,message=FALSE, warning=FALSE, echo=FALSE}
+##
+library(viridis)
+library(hrbrthemes)
+
+ethnicityHospitalTable=df %>%subset( ethnicity %in% c("Caucasian","African American")) %>%subset (region %in% c("Midwest", "South", "West", "Northeast"))
+b <- c(15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90)
+names=c("15-20","20-25","25-30","30-35","35-40","40-45","45-50","50-55","55-60","60-65","65-70","70-75","75-80","80-85","85-90")
+ethnicityHospitalTable$BreakedAge=cut(ethnicityHospitalTable$age_impute, breaks = b, labels = names)
+
+ethnicityHospitalSecondTable=ethnicityHospitalTable%>% group_by(BreakedAge,ethnicity,region) %>%summarise(expired=sum(hospitaldischargestatus=="Expired"),total=sum(hospitaldischargestatus %in%c("Expired","Alive")),percentage=expired/total*100)
+ethnicityHospitalSecondTable=na.omit(ethnicityHospitalSecondTable)
+ggplot(ethnicityHospitalSecondTable, aes(fill=ethnicity, y=percentage, x=BreakedAge)) + 
+    geom_bar(position="dodge", stat="identity") +
+    scale_fill_viridis(discrete = T, option = "E") +
+    ggtitle("Studying Mortality rate in different regions") +
+    facet_wrap(~region) +
+    theme_ipsum() +
+    xlab("")+theme(axis.text.x = element_text(angle = 90, hjust = 1, size=10,color="black"))
+#+scale_fill_manual("legend", values = c("Caucasian" = "#00AFBB", "African American" = "#FF6666"))
+
+```
