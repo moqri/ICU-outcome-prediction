@@ -19,27 +19,16 @@ library(visreg)
 library(rpart)
 library("caret")
 library(rpart.plot)
+library(corrplot)
 ```
 
-### Examining the patient table
-The uniquePid column identifies a single patient across multiple stays. Let's look at a single uniquepid.
-
-```{r}
-# data_folder is the local path to your data
-dfPatient=fread('patient.csv')
-#dfHospital=fread('hospital.csv')
-dfapachePatientResult=fread('apachePatientResult.csv')
-#df= merge(x = dfPatient, y = dfHospital, by = "hospitalid", all = TRUE)
-df= merge(x = dfPatient, y = dfapachePatientResult, by = "patientunitstayid", all = TRUE)
-
-```
 ### Age
 ```{r message=FALSE, warning=FALSE}
 df %<>% mutate(age_impute= (ifelse(age=='> 89',90, as.numeric(age))))
 age=df[!is.na(df$age_impute),]$age_impute
 ```
 
-###Logistic regression
+###Apachi Score
 ```{r}
 
 NewData=df%>%select(c(age_impute,ethnicity,apachescore))%>%subset(ethnicity %in% c("Caucasian","African American"))%>%subset(apachescore!='')%>%group_by(ethnicity, age_impute) %>% summarise(meanApachi=mean(apachescore))
@@ -49,10 +38,10 @@ ggplot(NewData, aes(x=age_impute, y=meanApachi)) +
 
 
 ########5years
-#b <- c(15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90)
-#names=c("15-20","20-25","25-30","30-35","35-40","40-45","45-50","50-55","55-60","60-65","65-70","70-75","75-80","80-85","85-90")
-b <- c(10,20,30,40,50,60,70,80,90)
-names=c("10-20","20-30","30-40","40-50","50-60","60-70","70-80","80-90")
+b <- c(15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90)
+names=c("15-20","20-25","25-30","30-35","35-40","40-45","45-50","50-55","55-60","60-65","65-70","70-75","75-80","80-85","85-90")
+# b <- c(10,20,30,40,50,60,70,80,90)
+# names=c("10-20","20-30","30-40","40-50","50-60","60-70","70-80","80-90")
 NewData$BreakedAge=cut(NewData$age_impute, breaks = b, labels = names)
 NewData<-na.omit(NewData)
 
@@ -60,13 +49,70 @@ NewData<-na.omit(NewData)
 
 ggplot(NewData,aes(x=BreakedAge, y=meanApachi,width=.45,fill=factor(ethnicity)))+
   geom_bar(stat="identity",position="dodge")+
-  scale_fill_discrete(name="ethnicity") +
-  xlab("Age")+ylab("Apachi Score")
+  
+  guides(fill=guide_legend(title="Ethnicity")) +
+  xlab("Age")+ylab("Apachi Score") +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1, size=10,color="black"))
 
 
 
 
 
 
+```
+####correlation of Apachi and Morality
+```{r}
+ApachiOutPut=df%>%select(c(apachescore,hospitaldischargestatus))%>%subset(apachescore!='',hospitaldischargestatus!='')
+ApachiOutPut$hospitaldischargestatus=as.factor(ApachiOutPut$hospitaldischargestatus)
+correlation <- cor(ApachiOutPut$apachescore,as.numeric(ApachiOutPut$hospitaldischargestatus))
+correlation
+
+ggplot(ApachiOutPut, aes( x=hospitaldischargestatus, y=apachescore)) + 
+  geom_violin(trim=FALSE)+ geom_boxplot(width=0.1)+xlab("Hospital discharge status")+ylab("Apachi Score") 
+
+```
+
+
+#most important disease
+```{r}
+DiseaseTable=df %>% group_by(apacheadmissiondx) %>%
+  summarise(expired=sum(hospitaldischargestatus=="Expired"),total=sum(hospitaldischargestatus %in%c("Expired","Alive")),percentage=expired/total*100) 
+DiseaseTable<-na.omit(DiseaseTable)
+DiseaseTable<-filter (DiseaseTable, total>2000)
+DiseaseTable<-filter (DiseaseTable, percentage>10)
+DiseaseTable$diseaseId=as.numeric(as.factor(DiseaseTable$apacheadmissiondx))
+```
+#Box plot
+```{r}
+BoxPlot=df%>%subset(unitdischargestatus %in%c("Expired","Alive"))%>%subset(apacheadmissiondx %in% DiseaseTable$apacheadmissiondx)%>%subset(apachescore!="")
+BoxPlot$apacheadmissiondx[which(BoxPlot$apacheadmissiondx=="Cardiac arrest (with or without respiratory arrest; for respiratory arrest see Respiratory System)")]<-"Cardiac arrest"
+BoxPlot$apacheadmissiondx[which(BoxPlot$apacheadmissiondx=="Hypovolemia (including dehydration, Do not include shock states)")]<-"Hypovolemia"
+ati=BoxPlot%>%select (c("apacheadmissiondx","unitdischargestatus","apachescore"))%>%group_by(apacheadmissiondx,unitdischargestatus)%>%summarise(med=median(apachescore))
+ggplot(BoxPlot, aes(x=apacheadmissiondx, y=apachescore, fill=unitdischargestatus)) +
+    geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, size=7,color="black"))+xlab("Admission diagnosis")+ylab("Apache Score")+guides(fill=guide_legend(title="Unit discharge status"))
+```	
+
+
+```{r}
+CHFPatients=df%>%subset(unitdischargestatus %in%c("Expired","Alive"))%>%subset(apacheadmissiondx=="CHF, congestive heart failure")%>%subset(apachescore!="")
+```
+
+```{r}
+NewData=CHFPatients%>%select(c("unitdischargestatus","apachescore","age"))
+NewData$unitdischargestatus=as.factor(NewData$unitdischargestatus)
+mylogit <- glm(unitdischargestatus~., data = NewData, family = "binomial")
+#print(mylogit)
+summary(mylogit)
+```
+
+```{r}
+df= left_join(x = df, y = dfapacheApsVar, by = "patientunitstayid")
+df= left_join(x = df, y = dfapachePredVar, by = "patientunitstayid")
+ApachiException=df%>%select(c())%>%subset(apachescore>100&hospitaldischargestatus=="Alive" |apachescore<50 &hospitaldischargestatus=="Expired")
+ApachiException=na.omit(ApachiException)
+ApachiException$hospitaldischargestatus <- factor(ApachiException$hospitaldischargestatus)
+mylogit <- glm(hospitaldischargestatus~., data = ApachiException, family = "binomial")
+print(mylogit)
+summary(mylogit)
 ```
 

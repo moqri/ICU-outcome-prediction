@@ -2,7 +2,7 @@
 title: "Exploring Patient Table"
 output: rmarkdown::github_document
 ---
-Author: [Mahdi Moqri](https://www.moqri.com/)
+Author: [Mahdi Moqri,Atefeh Rajabalizadeh]
 
 The patinet table is a core part of the eICU-CRD and contains all information related to tracking patient unit stays. The table also contains patient demographics and hospital level information.
 
@@ -28,27 +28,41 @@ df=fread('patient.csv')
 cols=c('uniquepid', 'gender', 'age', 'ethnicity','hospitaldischargestatus')
 kable(head(df %>% select(cols)))
 ```
+##patients
+```{r}
+#Unique patients
+NumofPatient=length(unique(df$uniquepid))
+NumofPatient
+#unique hospital referral
+NumofPatienttoHospital=length(unique(df$patienthealthsystemstayid))
+NumofPatienttoHospital
+#unique ICU referral
+NumofPatienttoICU=length(unique(df$patientunitstayid))
+NumofPatienttoICU
+```
+
 ### Age
 ```{r message=FALSE, warning=FALSE}
 df %<>% mutate(age_impute= (ifelse(age=='> 89',90, as.numeric(age))))
 age=df[!is.na(df$age_impute),]$age_impute
 hist(age)
-hist(age)
 median(age)
 data.frame(table(df$age))
 df_hist =df %>%subset(hospitaldischargestatus %in% c("Expired","Alive") )
-ggplot(df_hist, aes(x=age, fill=hospitaldischargestatus)) +
-geom_histogram(stat="count")     
-#b <- c(0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90)
-#names=c("0-5","5-10","10-15","15-20","20-25","25-30","30-35","35-40","40-45","45-50","50-55","55-60","60-65","65-70","70-75","75-80","80-85","85-90")
-b <- c(10,20,30,40,50,60,70,80,90)
-names=c("10-20","20-30","30-40","40-50","50-60","60-70","70-80","80-90")
+# ggplot(df_hist, aes(x=age, fill=hospitaldischargestatus)) +
+# geom_histogram(stat="count")     
+b <- c(15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90)
+names=c("15-20","20-25","25-30","30-35","35-40","40-45","45-50","50-55","55-60","60-65","65-70","70-75","75-80","80-85","85-90")
+df_hist =df %>%subset(hospitaldischargestatus %in% c("Expired","Alive") )
 df_hist$BreakedAge=cut(df_hist$age_impute, breaks = b, labels = names)
 df_hist<-na.omit(df_hist)
 SecondHistTable=df_hist %>% group_by(BreakedAge) 
+
 ggplot(SecondHistTable, aes(x=BreakedAge, fill=hospitaldischargestatus)) +
 geom_histogram(stat="count")  +
-  xlab("Age")+ylab("Freq")
+  xlab("Age")+ylab("Count of Patients")+
+guides(fill=guide_legend(title="Discharge status"))+
+scale_fill_manual("legend", values = c("Alive" = "#00AFBB", "Expired" = "#FF6666"))+theme(axis.text.x = element_text(angle = 90, hjust = 1, size=10,color="black"))
 ```
 
 ### Gender
@@ -64,7 +78,8 @@ ggplot(SecondGenderTable, aes(x=gender, fill=hospitaldischargestatus)) +
 geom_histogram(stat="count")  +
   xlab("Gender")+ylab("Freq")
 
-
+RealPatientGender=df%>%select(c(gender,uniquepid))%>%distinct(uniquepid, .keep_all = TRUE)
+table(RealPatientGender$gender)
 
 ```
 
@@ -75,7 +90,33 @@ ethnicity=df_ethnicity$ethnicity
 kable(table(ethnicity))
 barplot(table(ethnicity))
 ```
+###Race-Outcome
+```{r}
+df_ethnicity =df %>%subset(ethnicity!='' )%>%group_by(ethnicity)%>%
+   summarise(expired=sum(hospitaldischargestatus=="Expired"),total=sum(hospitaldischargestatus %in%c("Expired","Alive")),percentage=expired/total*100)
+ggplot(df_ethnicity, aes(x = ethnicity, y = percentage)) +
+  geom_bar(fill = "#0073C2FF", stat = "identity") +
+  geom_text(aes(label = ethnicity), vjust = -0.3) 
+```
+### Ethnicity
+```{r, catche=TRUE}
+df_ethnicity =df %>% subset(ethnicity!='')
 
+
+df_ethnicity=as.data.frame(table(df_ethnicity$ethnicity))
+df_ethnicity=df_ethnicity %>%
+arrange(desc(Freq)) %>%
+mutate(percentage = percent(Freq / sum(Freq))) 
+
+
+ggplot(df_ethnicity, aes(x = "", y = Freq, fill = fct_inorder(Var1))) +
+       geom_bar(width = 1, stat = "identity") +
+       coord_polar("y", start = 0) +
+  xlab("")+ylab("percentage")+
+  theme(axis.text.x=element_blank()) + scale_fill_brewer(palette="Greens")+
+       geom_label_repel(aes(label = percentage), size=5, show.legend = F, nudge_x = 1) +
+       guides(fill = guide_legend(title = "Ethnicity"))
+```
 ### Status at discharge
 ```{r}
 unit_discharge=df$unitdischargestatus
@@ -84,16 +125,10 @@ pie(table(unit_discharge))
 hostpial_discharge=df$hospitaldischargestatus
 kable(table(hostpial_discharge))
 pie(table(hostpial_discharge))
+RealHospitalDeath=df%>%select(c(unitdischargestatus,patienthealthsystemstayid))%>%distinct(patienthealthsystemstayid, .keep_all = TRUE)
+table(RealHospitalDeath$unitdischargestatus)
 ```
 
-###relationship between variables
-```{r}
-# df<-na.omit(df)
-# my_data<- df %>% select (-c(age))
-# CTree <- rpart(hospitaldischargestatus~., data=my_data, method="class")
-# rpart.plot(CTree, tweak = 1.5, cex=.6, type=5,extra = 106)
-
-```
 
 
 ### Age vs Outcome
@@ -111,33 +146,32 @@ plot(NewTableAge$`age_impute`, NewTableAge$percentage, main = "Age vs Death",
 
 ```
 ### Age and Gender vs Outcome
-```{r}
+```{r message=FALSE, warning=FALSE}
+
+
+df = df %>% mutate(hospitaldischargestatusId = ifelse(hospitaldischargestatus  %in% c("Expired"), 0, 1))
+dfNewTable=df%>%select(c("hospitaldischargestatusId","gender","age_impute"))
+NewTableAge=dfNewTable %>% group_by(age_impute) %>%
+  summarise(expired=sum(hospitaldischargestatusId=="0"),total=sum(hospitaldischargestatusId %in%c("0","1")),percentage=expired/total*100) 
+NewTableAge<-na.omit(NewTableAge)
 NewTableAgeGender=dfNewTable %>% group_by(age_impute, gender) %>%
   summarise(expired=sum(hospitaldischargestatusId=="0"),total=sum(hospitaldischargestatusId %in%c("0","1")),percentage=expired/total*100) 
 NewTableAgeGender<-na.omit(NewTableAgeGender)
 NewTableAgeGender<-filter (NewTableAgeGender, gender %in% c("Male","Female"))
-ggplot(NewTableAgeGender, aes(x=age_impute, y=percentage, group=gender)) +
-  geom_point(aes(color=gender))
-
-
-b <- c(0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90)
-names=c("0-5","5-10","10-15","15-20","20-25","25-30","30-35","35-40","40-45","45-50","50-55","55-60","60-65","65-70","70-75","75-80","80-85","85-90")
+b <- c(15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90)
+names=c("15-20","20-25","25-30","30-35","35-40","40-45","45-50","50-55","55-60","60-65","65-70","70-75","75-80","80-85","85-90")
 NewTableAgeGender$BreakedAge=cut(NewTableAgeGender$age_impute, breaks = b, labels = names)
 NewTableAgeGender<-na.omit(NewTableAgeGender)
 SecondTable=NewTableAgeGender %>% group_by(BreakedAge,gender) %>%
   summarise(expiredTotal=sum(percentage)/5)
 SecondTable<-na.omit(SecondTable)
-ggplot(SecondTable, aes(x=BreakedAge, y=expiredTotal, group=gender)) +
-  geom_line(aes(color=gender))+
-  geom_point(aes(color=gender))
-
 
 ggplot(SecondTable,aes(x=BreakedAge, y=expiredTotal,width=.45,fill=factor(gender)))+
   geom_bar(stat="identity",position="dodge")+
-  scale_fill_discrete(name="Gender",
-                      breaks=c(1, 2), 
-                      labels=c("Male","Female")) +
-  xlab("Gender")+ylab("Mortality Rate")
+  
+  guides(fill=guide_legend(title="Gender"))+
+scale_fill_manual("legend", values = c("Male" = "#00AFBB", "Female" = "#FF6666"))+
+  xlab("Age")+ylab("Mortality Rate")+theme(axis.text.x = element_text(angle = 90, hjust = 1, size=10,color="black"))
 ```
 
 
@@ -162,48 +196,35 @@ ggplot(data=DiseaseTable,aes(x=reorder(diseaseId,percentage),y=percentage)) +
        y='percentage',x='disease')+ 
   geom_hline(yintercept = mean(DiseaseTable$percentage),size = 1, color = 'blue')
 
-###pop >1000, percentage> 15
+###pop >2000, percentage> 15
 
 DiseaseTable=df %>% group_by(apacheadmissiondx) %>%
   summarise(expired=sum(hospitaldischargestatus=="Expired"),total=sum(hospitaldischargestatus %in%c("Expired","Alive")),percentage=expired/total*100) 
 DiseaseTable<-na.omit(DiseaseTable)
-DiseaseTable<-filter (DiseaseTable, total>1000)
-DiseaseTable<-filter (DiseaseTable, percentage>15)
+DiseaseTable<-filter (DiseaseTable, total>4500)
+DiseaseTable<-filter (DiseaseTable, percentage>10)
 DiseaseTable$diseaseId=as.numeric(as.factor(DiseaseTable$apacheadmissiondx))
 
 ggplot(data=DiseaseTable,aes(x=reorder(diseaseId,percentage),y=percentage)) +
   geom_bar(stat ='identity',aes(fill=percentage))+
   coord_flip() +
   theme_grey() +
-  scale_fill_gradient(name="percentage")+
-  labs(title = 'disease vs percentage',
-       y='percentage',x='disease')+
+  scale_fill_gradient(name="Mortality Rate")+
+  labs(y='Mortality Rate',x='disease')+
  geom_hline(yintercept = mean(DiseaseTable$percentage),size = 1, color = 'blue')
 ```
 
 
 
 
-###Race-Outcome
-```{r}
-df_ethnicity =df %>%subset(ethnicity!='' )%>%group_by(ethnicity)%>%
-   summarise(expired=sum(hospitaldischargestatus=="Expired"),total=sum(hospitaldischargestatus %in%c("Expired","Alive")),percentage=expired/total*100)
-ggplot(df_ethnicity, aes(x = ethnicity, y = percentage)) +
-  geom_bar(fill = "#0073C2FF", stat = "identity") +
-  geom_text(aes(label = ethnicity), vjust = -0.3) 
-```
+
 ###Age-race-Outcome- 
 ```{r}
  ethnicityTable=df %>%subset(ethnicity!='')%>% group_by(ethnicity, age_impute)%>%
    summarise(expired=sum(hospitaldischargestatus=="Expired"),total=sum(hospitaldischargestatus %in%c("Expired","Alive")),percentage=expired/total*100)
 ethnicityTable<-filter (ethnicityTable, ethnicity %in% c("Caucasian","African American"))
 ethnicityTable<-na.omit(ethnicityTable)
-ggplot(ethnicityTable, aes(x=age_impute, y=percentage, group=ethnicity)) +
- geom_point(aes(color=ethnicity))#+
-  #geom_line(aes(color=ethnicity))
- 
-# 
-#######5years
+
 b <- c(15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90)
 names=c("15-20","20-25","25-30","30-35","35-40","40-45","45-50","50-55","55-60","60-65","65-70","70-75","75-80","80-85","85-90")
 ethnicityTable$BreakedAge=cut(ethnicityTable$age_impute, breaks = b, labels = names)
@@ -211,132 +232,16 @@ ethnicityTable<-na.omit(ethnicityTable)
 
 ethnicitySecondTable=ethnicityTable %>% group_by(BreakedAge,ethnicity) %>%
   summarise(Newexpired=sum(expired),Newtotal=sum(total),Newpercentage=Newexpired/Newtotal*100)
-ggplot(ethnicitySecondTable, aes(x=BreakedAge, y=Newpercentage, group=ethnicity)) +
-  geom_line(aes(color=ethnicity))+
-  geom_point(aes(color=ethnicity))
+
 
 ggplot(ethnicitySecondTable,aes(x=BreakedAge, y=Newpercentage,width=.45,fill=factor(ethnicity)))+
   geom_bar(stat="identity",position="dodge")+
-  scale_fill_discrete(name="ethnicity",
-                      breaks=c(1, 2), 
-                      labels=c("Caucasian","African American")) +
-  xlab("Age")+ylab("Mortality Rate")
+  
+  guides(fill=guide_legend(title="ethnicity"))+
+scale_fill_manual("legend", values = c("Caucasian" = "#00AFBB", "African American" = "#FF6666"))+
+  xlab("Age")+ylab("Mortality Rate")+theme(axis.text.x = element_text(angle = 90, hjust = 1, size=10,color="black"))
 
 
 ```
-```{r}
-####10 years
-b <- c(10,20,30,40,50,60,70,80,90)
-names=c("10-20","20-30","30-40","40-50","50-60","60-70","70-80","80-90")
-ethnicityTable$BreakedAge=cut(ethnicityTable$age_impute, breaks = b, labels = names)
-ethnicityTable<-na.omit(ethnicityTable)
 
-ethnicitySecondTable=ethnicityTable %>% group_by(BreakedAge,ethnicity) %>%
-  summarise(Newexpired=sum(expired),Newtotal=sum(total),Newpercentage=Newexpired/Newtotal*100)
-ggplot(ethnicitySecondTable, aes(x=BreakedAge, y=Newpercentage, group=ethnicity)) +
-  geom_line(aes(color=ethnicity))+
-  geom_point(aes(color=ethnicity))
-
-ggplot(ethnicitySecondTable,aes(x=BreakedAge, y=Newpercentage,width=.45,fill=factor(ethnicity)))+
-  geom_bar(stat="identity",position="dodge")+
-  scale_fill_discrete(name="ethnicity") +
- #geom_text(aes(label = Newpercentage), size = 3, hjust = 0.5, vjust = 3)+
-  xlab("Age")+ylab("Mortality Rate")
-
-```
-
-###F-TEST
-```{r}
-# dfEthOut=df%>%select(c(ethnicity,hospitaldischargestatus))
-# dfEthOut <-na.omit(dfEthOut)
-# dfEthOut=dfEthOut%>%mutate(output=ifelse(hospitaldischargestatus  %in% c("Expired"), 0, 1))
-# White=dfEthOut%>%subset(ethnicity=="Caucasian")
-# Black=dfEthOut%>%subset(ethnicity=="African American")
-# 
-# f.test(White$output,Black$output)
-```
-###checking relationship between age and race and disease
-```{r}
-########most common disease
-##Sepsis, pulmonary
-######## most fatal disease
-##Cardiac arrest (with or without respiratory arrest; for respiratory arrest see Respiratory System)
-df_ethnicityDiseas =df %>%subset(ethnicity %in% c("Caucasian","African American") )%>%subset(apacheadmissiondx=='Sepsis, pulmonary')%>%group_by(ethnicity)%>%
-   summarise(expired=sum(hospitaldischargestatus=="Expired"),total=sum(hospitaldischargestatus %in%c("Expired","Alive")),percentage=expired/total*100)
-ggplot(df_ethnicityDiseas, aes(x = ethnicity, y = percentage)) +
-  geom_bar(fill = "#0073C2FF", stat = "identity") +
-  geom_text(aes(label = ethnicity), vjust = -0.3) 
-
-
-ethnicityDiseaseTable=df %>%subset(ethnicity!='')%>%subset(apacheadmissiondx=='Sepsis, pulmonary')%>% group_by(ethnicity, age_impute)%>%
-   summarise(expired=sum(hospitaldischargestatus=="Expired"),total=sum(hospitaldischargestatus %in%c("Expired","Alive")),percentage=expired/total*100)
- ethnicityDiseaseTable<-filter (ethnicityDiseaseTable, ethnicity %in% c("Caucasian","African American"))
-ethnicityDiseaseTable<-na.omit(ethnicityDiseaseTable)
-ggplot(ethnicityDiseaseTable, aes(x=age_impute, y=percentage, group=ethnicity)) +
- geom_point(aes(color=ethnicity))
-
-
-b <- c(15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90)
-names=c("15-20","20-25","25-30","30-35","35-40","40-45","45-50","50-55","55-60","60-65","65-70","70-75","75-80","80-85","85-90")
-ethnicityDiseaseTable$BreakedAge=cut(ethnicityDiseaseTable$age_impute, breaks = b, labels = names)
-ethnicityDiseaseTable<-na.omit(ethnicityDiseaseTable)
-
-ethnicityDiseaseSecondTable=ethnicityDiseaseTable %>% group_by(BreakedAge,ethnicity) %>%
-  summarise(Newexpired=sum(expired),Newtotal=sum(total),Newpercentage=Newexpired/Newtotal*100)
-ggplot(ethnicityDiseaseSecondTable, aes(x=BreakedAge, y=Newpercentage, group=ethnicity)) +
-  geom_point(aes(color=ethnicity))
-
-ggplot(ethnicityDiseaseSecondTable,aes(x=BreakedAge, y=Newpercentage,width=.45,fill=factor(ethnicity)))+
-  geom_bar(stat="identity",position="dodge")+
-  scale_fill_discrete(name="ethnicity",
-                      breaks=c(1, 2), 
-                      labels=c("Caucasian","African American")) +
-  xlab("Race")+ylab("Mortality")
-	
-```
-####Hospital vs output
-```{r}
-
-Hospital=df %>% group_by(hospitalid) %>%
-  summarise(expired=sum(hospitaldischargestatus=="Expired"),total=sum(hospitaldischargestatus %in%c("Expired","Alive")),percentage=expired/total*100) 
-Hospital<-na.omit(Hospital)
-
-
-##Hospital with more patients= 73
-##Hospital with pation greator than 2000 and biggist death= 208
-##Hospital with pation greator than 1000 and biggist death= 142
-df_ethnicityHospital =df %>%subset(ethnicity %in% c("Caucasian","African American") )%>%subset(hospitalid=='73')%>%group_by(ethnicity)%>%
-   summarise(expired=sum(hospitaldischargestatus=="Expired"),total=sum(hospitaldischargestatus %in%c("Expired","Alive")),percentage=expired/total*100)
-ggplot(df_ethnicityHospital, aes(x = ethnicity, y = percentage)) +
-  geom_bar(fill = "#0073C2FF", stat = "identity") +
-  geom_text(aes(label = ethnicity), vjust = -0.3) 
-
-
-ethnicityHospitalTable=df %>%subset(ethnicity!='')%>%subset(hospitalid=='73')%>% group_by(ethnicity, age_impute)%>%
-   summarise(expired=sum(hospitaldischargestatus=="Expired"),total=sum(hospitaldischargestatus %in%c("Expired","Alive")),percentage=expired/total*100)
- ethnicityHospitalTable<-filter (ethnicityHospitalTable, ethnicity %in% c("Caucasian","African American"))
-ethnicityHospitalTable<-na.omit(ethnicityHospitalTable)
-ggplot(ethnicityHospitalTable, aes(x=age_impute, y=percentage, group=ethnicity)) +
- geom_point(aes(color=ethnicity))
-
-
-b <- c(15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90)
-names=c("15-20","20-25","25-30","30-35","35-40","40-45","45-50","50-55","55-60","60-65","65-70","70-75","75-80","80-85","85-90")
-ethnicityHospitalTable$BreakedAge=cut(ethnicityHospitalTable$age_impute, breaks = b, labels = names)
-ethnicityHospitalTable<-na.omit(ethnicityHospitalTable)
-
-ethnicityHospitalSecondTable=ethnicityHospitalTable %>% group_by(BreakedAge,ethnicity) %>%
-  summarise(Newexpired=sum(expired),Newtotal=sum(total),Newpercentage=Newexpired/Newtotal*100)
-ggplot(ethnicityHospitalSecondTable, aes(x=BreakedAge, y=Newpercentage, group=ethnicity)) +
-  geom_point(aes(color=ethnicity))
-
-
-ggplot(ethnicityHospitalSecondTable,aes(x=BreakedAge, y=Newpercentage,width=.45,fill=factor(ethnicity)))+
-  geom_bar(stat="identity",position="dodge")+
-  scale_fill_discrete(name="ethnicity",
-                      breaks=c(1, 2), 
-                      labels=c("Caucasian","African American")) +
-  xlab("Race")+ylab("Mortality")
-
-```
 
