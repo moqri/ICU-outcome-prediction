@@ -57,7 +57,7 @@ ggplot(NewData,aes(x=BreakedAge, y=meanApachi,width=.45,fill=factor(ethnicity)))
   geom_bar(stat="identity",position="dodge")+
   
   guides(fill=guide_legend(title="Ethnicity")) +
-  xlab("Age")+ylab("Apachi score") +
+  xlab("Age")+ylab("APACHE score") +
     theme(axis.text.x = element_text(angle = 90, hjust = 1, size=10,color="black"))
 
 
@@ -68,13 +68,13 @@ ggplot(NewData,aes(x=BreakedAge, y=meanApachi,width=.45,fill=factor(ethnicity)))
 ```
 ####correlation of Apachi and Morality
 ```{r}
-ApachiOutPut=df%>%select(c(apachescore,hospitaldischargestatus))%>%subset(apachescore!='',hospitaldischargestatus!='')
-ApachiOutPut$hospitaldischargestatus=as.factor(ApachiOutPut$hospitaldischargestatus)
-correlation <- cor(ApachiOutPut$apachescore,as.numeric(ApachiOutPut$hospitaldischargestatus))
+ApachiOutPut=df%>%select(c(apachescore,unitdischargestatus))%>%subset(apachescore!='')%>%subset (unitdischargestatus %in% c("Alive","Expired"))
+ApachiOutPut$unitdischargestatus=as.factor(ApachiOutPut$unitdischargestatus)
+correlation <- cor(ApachiOutPut$apachescore,as.numeric(ApachiOutPut$unitdischargestatus))
 correlation
 
-ggplot(ApachiOutPut, aes( x=hospitaldischargestatus, y=apachescore)) + 
-  geom_violin(trim=FALSE)+ geom_boxplot(width=0.1)+xlab("Hospital discharge status")+ylab("Apachi score") 
+ggplot(ApachiOutPut, aes( x=unitdischargestatus, y=apachescore)) + 
+  geom_violin(trim=FALSE)+ geom_boxplot(width=0.1)+xlab("Unit discharge status")+ylab("APACHE score") 
 
 ```
 
@@ -94,7 +94,7 @@ BoxPlot=df%>%subset(unitdischargestatus %in%c("Expired","Alive"))%>%subset(apach
 BoxPlot$apacheadmissiondx[which(BoxPlot$apacheadmissiondx=="Cardiac arrest (with or without respiratory arrest; for respiratory arrest see Respiratory System)")]<-"Cardiac arrest"
 # ati=BoxPlot%>%select (c("apacheadmissiondx","unitdischargestatus","apachescore"))%>%group_by(apacheadmissiondx,unitdischargestatus)%>%summarise(med=median(apachescore))
 ggplot(BoxPlot, aes(x=apacheadmissiondx, y=apachescore, fill=unitdischargestatus)) +
-    geom_boxplot()+theme(axis.text.x = element_text(angle = 45, hjust = 1, size=10,color="black"))+xlab("Admission diagnosis")+ylab("Apache score")+guides(fill=guide_legend(title="Unit discharge status"))
+    geom_boxplot()+theme(axis.text.x = element_text(angle = 45, hjust = 1, size=10,color="black"))+xlab("Admission diagnosis")+ylab("APACHE score")+guides(fill=guide_legend(title="Unit discharge status"))
 ```	
 
 

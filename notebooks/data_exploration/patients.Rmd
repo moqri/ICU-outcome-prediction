@@ -67,7 +67,7 @@ SecondHistTable=df_hist %>% group_by(BreakedAge)
 ggplot(SecondHistTable, aes(x=BreakedAge, fill=hospitaldischargestatus)) +
 geom_histogram(stat="count")  +
   xlab("Age")+ylab("Frequency of ICU admission")+
-guides(fill=guide_legend(title="Discharge status"))+
+guides(fill=guide_legend(title="Hospital discharge status"))+
 scale_fill_manual("legend", values = c("Alive" = "#00AFBB", "Expired" = "#FF6666"))+theme(axis.text.x = element_text(angle = 90, hjust = 1, size=10,color="black"))
 ```
 
@@ -86,6 +86,16 @@ geom_histogram(stat="count")  +
 
 RealPatientGender=df%>%select(c(gender,uniquepid))%>%distinct(uniquepid, .keep_all = TRUE)
 table(RealPatientGender$gender)
+
+
+
+
+
+df_Gender =df %>%subset(gender!='' )%>%group_by(gender)%>%
+   summarise(expired=sum(hospitaldischargestatus=="Expired"),total=sum(hospitaldischargestatus %in%c("Expired","Alive")),percentage=expired/total*100)
+ggplot(df_Gender, aes(x = gender, y = percentage)) +
+  geom_bar(fill = "#0073C2FF", stat = "identity") +
+  geom_text(aes(label = gender), vjust = -0.3) 
 
 ```
 
