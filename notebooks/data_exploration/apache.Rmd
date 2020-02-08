@@ -22,6 +22,12 @@ library(rpart.plot)
 library(corrplot)
 ```
 
+```{r}
+# data_folder is the local path to your data
+dfPatient=fread('data/patient.csv')
+dfApache=fread('data/apachePatientResult.csv')
+df= merge(x = dfPatient, y = dfApache, by = "patientunitstayid", all = TRUE)
+```
 ### Age
 ```{r message=FALSE, warning=FALSE}
 df %<>% mutate(age_impute= (ifelse(age=='> 89',90, as.numeric(age))))
@@ -51,7 +57,7 @@ ggplot(NewData,aes(x=BreakedAge, y=meanApachi,width=.45,fill=factor(ethnicity)))
   geom_bar(stat="identity",position="dodge")+
   
   guides(fill=guide_legend(title="Ethnicity")) +
-  xlab("Age")+ylab("Apachi Score") +
+  xlab("Age")+ylab("Apachi score") +
     theme(axis.text.x = element_text(angle = 90, hjust = 1, size=10,color="black"))
 
 
@@ -68,28 +74,27 @@ correlation <- cor(ApachiOutPut$apachescore,as.numeric(ApachiOutPut$hospitaldisc
 correlation
 
 ggplot(ApachiOutPut, aes( x=hospitaldischargestatus, y=apachescore)) + 
-  geom_violin(trim=FALSE)+ geom_boxplot(width=0.1)+xlab("Hospital discharge status")+ylab("Apachi Score") 
+  geom_violin(trim=FALSE)+ geom_boxplot(width=0.1)+xlab("Hospital discharge status")+ylab("Apachi score") 
 
 ```
 
 
 #most important disease
 ```{r}
-DiseaseTable=df %>% group_by(apacheadmissiondx) %>%
+DiseaseTable=df %>%subset(apacheadmissiondx %in% c("Cardiac arrest (with or without respiratory arrest; for respiratory arrest see Respiratory System)","CHF, congestive heart failure","CVA, cerebrovascular accident/stroke","Sepsis, pulmonary","Sepsis, renal/UTI (including bladder)"))%>% group_by(apacheadmissiondx) %>%
   summarise(expired=sum(hospitaldischargestatus=="Expired"),total=sum(hospitaldischargestatus %in%c("Expired","Alive")),percentage=expired/total*100) 
 DiseaseTable<-na.omit(DiseaseTable)
-DiseaseTable<-filter (DiseaseTable, total>2000)
+DiseaseTable<-filter (DiseaseTable, total>4500)
 DiseaseTable<-filter (DiseaseTable, percentage>10)
 DiseaseTable$diseaseId=as.numeric(as.factor(DiseaseTable$apacheadmissiondx))
 ```
 #Box plot
-```{r}
+```{r, fig.height=8,fig.width=8}
 BoxPlot=df%>%subset(unitdischargestatus %in%c("Expired","Alive"))%>%subset(apacheadmissiondx %in% DiseaseTable$apacheadmissiondx)%>%subset(apachescore!="")
 BoxPlot$apacheadmissiondx[which(BoxPlot$apacheadmissiondx=="Cardiac arrest (with or without respiratory arrest; for respiratory arrest see Respiratory System)")]<-"Cardiac arrest"
-BoxPlot$apacheadmissiondx[which(BoxPlot$apacheadmissiondx=="Hypovolemia (including dehydration, Do not include shock states)")]<-"Hypovolemia"
-ati=BoxPlot%>%select (c("apacheadmissiondx","unitdischargestatus","apachescore"))%>%group_by(apacheadmissiondx,unitdischargestatus)%>%summarise(med=median(apachescore))
+# ati=BoxPlot%>%select (c("apacheadmissiondx","unitdischargestatus","apachescore"))%>%group_by(apacheadmissiondx,unitdischargestatus)%>%summarise(med=median(apachescore))
 ggplot(BoxPlot, aes(x=apacheadmissiondx, y=apachescore, fill=unitdischargestatus)) +
-    geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, size=7,color="black"))+xlab("Admission diagnosis")+ylab("Apache Score")+guides(fill=guide_legend(title="Unit discharge status"))
+    geom_boxplot()+theme(axis.text.x = element_text(angle = 45, hjust = 1, size=10,color="black"))+xlab("Admission diagnosis")+ylab("Apache score")+guides(fill=guide_legend(title="Unit discharge status"))
 ```	
 
 

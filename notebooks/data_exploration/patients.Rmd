@@ -17,6 +17,12 @@ library(knitr)
 library(ggplot2)
 library(visreg)
 library(rpart)
+library(scales)
+library(ggrepel)
+library(forcats)
+library(gtable)
+library(stringr)
+library(grid)
 ```
 
 ### Examining the patient table
@@ -24,7 +30,7 @@ The uniquePid column identifies a single patient across multiple stays. Let's lo
 
 ```{r}
 # data_folder is the local path to your data
-df=fread('patient.csv')
+df=fread('data/patient.csv')
 cols=c('uniquepid', 'gender', 'age', 'ethnicity','hospitaldischargestatus')
 kable(head(df %>% select(cols)))
 ```
@@ -60,7 +66,7 @@ SecondHistTable=df_hist %>% group_by(BreakedAge)
 
 ggplot(SecondHistTable, aes(x=BreakedAge, fill=hospitaldischargestatus)) +
 geom_histogram(stat="count")  +
-  xlab("Age")+ylab("Count of Patients")+
+  xlab("Age")+ylab("Frequency of ICU admission")+
 guides(fill=guide_legend(title="Discharge status"))+
 scale_fill_manual("legend", values = c("Alive" = "#00AFBB", "Expired" = "#FF6666"))+theme(axis.text.x = element_text(angle = 90, hjust = 1, size=10,color="black"))
 ```
@@ -117,6 +123,21 @@ ggplot(df_ethnicity, aes(x = "", y = Freq, fill = fct_inorder(Var1))) +
        geom_label_repel(aes(label = percentage), size=5, show.legend = F, nudge_x = 1) +
        guides(fill = guide_legend(title = "Ethnicity"))
 ```
+###Ethnicity
+```{r, catche=TRUE}
+df_ethnicity =df%>%select (ethnicity, hospitaldischargestatus) %>%subset(ethnicity!='' )%>%subset (hospitaldischargestatus %in%c("Expired","Alive"))%>%group_by(ethnicity)
+
+
+ggplot(df_ethnicity, aes(x=ethnicity, fill=hospitaldischargestatus)) +
+geom_histogram(stat="count")  +
+  xlab("Ethnicity")+ylab("Frequency of ICU admission")+theme(axis.text.x = element_text(angle = 45, hjust = 1, size=10,color="black")) +
+guides(fill=guide_legend(title="Discharge status"))+
+scale_fill_manual("legend", values = c("Alive" = "#00AFBB", "Expired" = "#FF6666"))
+
+
+# ggplot(data =df_ethnicity, aes(x = ethnicity, y = len(ethnicity), fill = Expired))
+# geom_bar(stat = "identity")
+```
 ### Status at discharge
 ```{r}
 unit_discharge=df$unitdischargestatus
@@ -171,12 +192,12 @@ ggplot(SecondTable,aes(x=BreakedAge, y=expiredTotal,width=.45,fill=factor(gender
   
   guides(fill=guide_legend(title="Gender"))+
 scale_fill_manual("legend", values = c("Male" = "#00AFBB", "Female" = "#FF6666"))+
-  xlab("Age")+ylab("Mortality Rate")+theme(axis.text.x = element_text(angle = 90, hjust = 1, size=10,color="black"))
+  xlab("Age")+ylab("Mortality rate")+theme(axis.text.x = element_text(angle = 90, hjust = 1, size=10,color="black"))
 ```
 
 
 ###disease-outcome
-```{r}
+```{r,fig.height=8,fig.width=8}
 ###pop>50 and percentage>20
 DiseaseTable=df %>% group_by(apacheadmissiondx) %>%
   summarise(expired=sum(hospitaldischargestatus=="Expired"),total=sum(hospitaldischargestatus %in%c("Expired","Alive")),percentage=expired/total*100) 
@@ -203,15 +224,14 @@ DiseaseTable=df %>% group_by(apacheadmissiondx) %>%
 DiseaseTable<-na.omit(DiseaseTable)
 DiseaseTable<-filter (DiseaseTable, total>4500)
 DiseaseTable<-filter (DiseaseTable, percentage>10)
-DiseaseTable$diseaseId=as.numeric(as.factor(DiseaseTable$apacheadmissiondx))
-
-ggplot(data=DiseaseTable,aes(x=reorder(diseaseId,percentage),y=percentage)) +
+DiseaseTable$apacheadmissiondx=as.numeric(as.factor(DiseaseTable$apacheadmissiondx))
+DiseaseTable=DiseaseTable%>%mutate(apacheadmissiondx = ifelse(apacheadmissiondx %in% c("1"), "Cardiac arrest", ifelse(apacheadmissiondx %in% c("2"),"CHF, congestive heart failure", ifelse(apacheadmissiondx %in% c("3"),"CVA, cerebrovascular accident/stroke", ifelse(apacheadmissiondx %in% c("4"),"Sepsis, pulmonary", "Sepsis, renal/UTI (including bladder)")))))
+# 
+ggplot(data=DiseaseTable,aes(x=reorder(apacheadmissiondx,-percentage),y=percentage)) +
   geom_bar(stat ='identity',aes(fill=percentage))+
-  coord_flip() +
   theme_grey() +
-  scale_fill_gradient(name="Mortality Rate")+
-  labs(y='Mortality Rate',x='disease')+
- geom_hline(yintercept = mean(DiseaseTable$percentage),size = 1, color = 'blue')
+  labs(y='Mortality rate',x='Disease type')+
+ geom_hline(yintercept = mean(DiseaseTable$percentage),size = 1, color = 'blue')+theme(axis.text.x = element_text(angle = 45, hjust = 1, size=10,color="black"))+guides(fill=guide_legend(title="Percentage"))
 ```
 
 
@@ -237,9 +257,9 @@ ethnicitySecondTable=ethnicityTable %>% group_by(BreakedAge,ethnicity) %>%
 ggplot(ethnicitySecondTable,aes(x=BreakedAge, y=Newpercentage,width=.45,fill=factor(ethnicity)))+
   geom_bar(stat="identity",position="dodge")+
   
-  guides(fill=guide_legend(title="ethnicity"))+
+  guides(fill=guide_legend(title="Ethnicity"))+
 scale_fill_manual("legend", values = c("Caucasian" = "#00AFBB", "African American" = "#FF6666"))+
-  xlab("Age")+ylab("Mortality Rate")+theme(axis.text.x = element_text(angle = 90, hjust = 1, size=10,color="black"))
+  xlab("Age")+ylab("Mortality rate")+theme(axis.text.x = element_text(angle = 90, hjust = 1, size=10,color="black"))
 
 
 ```
