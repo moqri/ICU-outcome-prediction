@@ -1,0 +1,368 @@
+---
+title: "Time discharged from the hospital and ICU unit"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+```{r}
+
+library(plyr)
+library(knitr)
+library(dplyr)
+library(cowplot)
+library(cowplot)
+library(magrittr)
+library(lubridate)
+library(tidyverse)
+library(data.table)
+
+```
+
+```{r}
+patient <- read_csv("Patient.csv.gz")
+patient %<>% mutate(age_impute = (ifelse(age=='> 89',90, as.numeric(age))))
+patient <- patient %>%subset(hospitaldischargestatus %in% c("Expired","Alive") )
+
+patient$apacheadmissiondx[which(patient$apacheadmissiondx == "Cardiac arrest (with or without respiratory arrest; for respiratory arrest see Respiratory System)")] <- "Cardiac arrest"
+patient$apacheadmissiondx[which(patient$apacheadmissiondx == "Cardiac arrest(with ...)")] <- "Cardiac arrest"
+
+patient$hour0 <- lubridate::hour(hms(patient$hospitaldischargetime24)) 
+patient$hour <- lubridate::hour(hms(patient$unitdischargetime24)) 
+
+patient$hadmit <- lubridate::hour(hms(patient$hospitaladmittime24)) 
+patient$icuadmit <-lubridate::hour(hms(patient$unitadmittime24)) 
+
+```
+
+```{r}
+
+d0 <- patient %>% filter(!gender%in%c("Unknown","Other",NA))
+f  <- ggplot( d0, aes(x=hour , fill = gender))
+f  +  geom_bar(  position = position_dodge())+
+      labs(x = "Time discharged from the ICU  for all patients (hr)", y = "Count") +
+      theme_classic()+ 
+      theme(axis.title.x = element_text(size = 14), axis.title.y = element_text(size = 14),
+      legend.title=element_text("Gender",size = 14))+ guides(fill=guide_legend(title="Gender"))
+
+
+```
+```{r}
+
+d1 <- patient %>% filter(!gender%in%c("Unknown","Other",NA))
+f  <- ggplot( d1, aes(x=hour0 , fill = gender ))
+f  +  geom_bar(  position = position_dodge())+
+      labs(x = "Time discharged from the hospital  for all patients (hr)", y = "Count") +
+      theme_classic()+ 
+      theme(axis.title.x = element_text(size = 14), axis.title.y = element_text(size = 14),
+      legend.title=element_text("Gender"))+ guides(fill=guide_legend(title="Gender"))
+
+
+```
+```{r}
+#------------------------------------------------------------------------------------------------
+# Expired 
+#------------------------------------------------------------------------------------------------
+#Expired in hospital
+
+d <- patient %>% filter(hospitaldischargestatus=="Expired")
+d <- d %>% filter(!gender%in%c("Unknown","Other",NA))
+f <- ggplot( d, aes(x=hour0 , fill = gender ))
+f  + geom_bar(  position = position_dodge())+
+     labs(x = "Time discharged from the hospital for expired patients (hr)", y = "Count")+ 
+     theme_classic()+ 
+     theme(axis.title.x = element_text(size = 14), axis.title.y = element_text(size = 14),
+     legend.title=element_text("Gender",size = 14))+ guides(fill=guide_legend(title="Gender"))
+
+
+```
+```{r}
+
+#Expired in ICU
+d <- patient %>% filter(unitdischargestatus=="Expired")
+d <- d %>% filter(!gender%in%c("Unknown","Other",NA))
+f <- ggplot( d, aes(x=hour , fill = gender ))
+f +  geom_bar(  position = position_dodge())+
+     labs(x = "Time discharged from the ICU for expired patients (hr)", y = "Count")+ 
+     theme_classic()+ 
+     theme(axis.title.x = element_text(size = 14), axis.title.y = element_text(size = 14),
+     legend.title=element_text("Gender",size = 14)) + guides(fill=guide_legend(title="Gender"))
+
+```
+
+
+```{r}
+
+caredata <- read_csv("carePlanCareProvider.csv.gz")
+caredata$activeupondischarge <- as.factor(caredata$activeupondischarge)
+
+levels(caredata$activeupondischarge)
+
+aa <- caredata %>% select(patientunitstayid,activeupondischarge )
+
+patient1 <- patient %>% merge(aa, by = "patientunitstayid" )
+
+d2 <-patient1 %>% filter(unitdischargestatus=="Expired") #%>% filter(activeupondischarge==TRUE)
+d2 <- d2 %>% filter(!gender%in%c("Unknown","Other",NA))
+f <- ggplot( d2, aes(x=hour, fill = activeupondischarge ))
+f + geom_bar(  position = position_dodge())+
+    labs(x = "Time discharged from the ICU (hr)", y = "Frequency of expired patients") +
+    theme_classic()+ 
+    theme(axis.title.x = element_text(size = 14), axis.title.y = element_text(size = 14),
+    legend.title=element_text("Active physician\nupon discharge" , face = "bold" )) + 
+    guides(fill=guide_legend(title="Active physician\nupon discharge"))
+
+```
+```{r}
+
+d2<-patient1 %>% filter(hospitaldischargestatus=="Expired" & unitdischargestatus!="Expired") #%>% filter(activeupondischarge==TRUE)
+#d2 <- d2 %>% filter(!gender%in%c("Unknown","Other",NA))
+f <- ggplot( d2, aes(x=hour, fill = activeupondischarge ))
+f + geom_bar(  position = position_dodge())+
+    labs(x = "Time discharged from ICU for expired patients (hr)\n Alive from ICU - Expired from hospital", y = "Frequency of expired patients") +
+    theme_classic()+ 
+    theme(axis.title.x = element_text(size = 14), axis.title.y = element_text(size = 14),
+    legend.title=element_text("Active physician\nupon discharge" , face = "bold" )) +
+    guides(fill=guide_legend(title="Active physician\nupon discharge"))
+
+```
+
+
+```{r}
+
+
+d2<-patient1 %>% filter(hospitaldischargestatus=="Expired" & unitdischargestatus!="Expired") #%>% filter(activeupondischarge==TRUE)
+#d2 <- d2 %>% filter(!gender%in%c("Unknown","Other",NA))
+f <- ggplot( d2, aes(x=hour, fill = activeupondischarge ))
+f + geom_bar(  position = position_dodge())+
+    labs(x = "Time discharged from hospital for expired patients (hr)\n Alive from ICU - Expired from hospital", y = "Count") +
+    theme_classic()+ 
+    theme(axis.title.x = element_text(size = 14), axis.title.y = element_text(size = 14),
+    legend.title=element_text("Active physician\nupon discharge" , face = "bold" )) +
+    guides(fill=guide_legend(title="Active physician\nupon discharge")) + 
+    scale_fill_manual( values = c("FALSE" = "royalblue3", "TRUE" = "red2"))
+
+
+d2 <-patient1  #%>% filter(activeupondischarge==TRUE)
+d2 <- d2 %>% filter(!gender%in%c("Unknown","Other",NA))
+f <- ggplot( d2, aes(x=hour, fill = activeupondischarge ))
+f + geom_bar(  position = position_dodge())+
+    labs(x = "Time discharged from hospital for expired patients (hr)\n Alive from ICU - Expired from hospital", y = "Count") +
+    theme_classic()+ 
+    theme(axis.title.x = element_text(size = 14), axis.title.y = element_text(size = 14),
+    legend.title=element_text("Active physician\nupon discharge" , face = "bold" )) +
+    guides(fill=guide_legend(title="Active physician\nupon discharge")) + 
+    scale_fill_manual( values = c("FALSE" = "royalblue3", "TRUE" = "red2"))
+
+```
+
+
+```{r cars}
+###Not Included in the paper
+#------------------------------------------------------------------------------------------------
+# Whole 
+#------------------------------------------------------------------------------------------------
+
+f <- ggplot( patient, aes(x=hour))
+f+ geom_bar( fill = "steelblue")+
+  labs(x = "Time discharged from the ICU for all patients (hr)", y = "Count") + 
+  theme_classic()+ 
+  theme(axis.title.x = element_text(size = 14), axis.title.y = element_text(size = 14))
+
+
+
+d0 <- patient %>% filter(!gender%in%c("Unknown","Other",NA))
+f <- ggplot( d0, aes(x=hour , fill = gender ))
+f+ geom_bar(  position = position_dodge())+
+  labs(x = "Time discharged from the ICU  for all patients (hr)", y = "Count") +
+  theme_classic()+ 
+  theme(axis.title.x = element_text(size = 20), axis.title.y = element_text(size = 20),legend.title=element_text("Gender",size = 20))+ guides(fill=guide_legend(title="Gender"))
+
+
+d1 <- patient %>% filter(!gender%in%c("Unknown","Other",NA))
+f <- ggplot( d1, aes(x=hour0 , fill = gender ))
+f+ geom_bar(  position = position_dodge())+
+  labs(x = "Time discharged from the hospital  for all patients (hr)", y = "Count") +
+  theme_classic()+ 
+  theme(axis.title.x = element_text(size = 14), axis.title.y = element_text(size = 14),legend.title=element_text("Gender"))+ guides(fill=guide_legend(title="Gender"))
+
+
+
+#------------------------------------------------------------------------------------------------
+# Expired 
+#------------------------------------------------------------------------------------------------
+#Expired in hospital
+d <- patient %>% filter(hospitaldischargestatus=="Expired")
+d <- d %>% filter(!gender%in%c("Unknown","Other",NA))
+f <- ggplot( d, aes(x=hour0 , fill = gender ))
+f+ geom_bar(  position = position_dodge())+
+  labs(x = "Time discharged from the hospital for expired patients (hr)", y = "Count")+ 
+  theme_classic()+ 
+  theme(axis.title.x = element_text(size = 14), axis.title.y = element_text(size = 14),legend.title=element_text("Gender",size = 14))+ guides(fill=guide_legend(title="Gender"))
+
+
+#Expired in ICU
+d <- patient %>% filter(unitdischargestatus=="Expired")
+d <- d %>% filter(!gender%in%c("Unknown","Other",NA))
+f <- ggplot( d, aes(x=hour , fill = gender ))
+f+ geom_bar(  position = position_dodge())+
+  labs(x = "Time discharged from the ICU for expired patients (hr)", y = "Count")+ 
+  theme_classic()+ 
+  theme(axis.title.x = element_text(size = 14), axis.title.y = element_text(size = 14),legend.title=element_text("Gender",size = 14))+ guides(fill=guide_legend(title="Gender"))
+
+
+
+
+#Alive from ICU but Expired from hospital
+d <- patient %>% filter(hospitaldischargestatus=="Expired" & unitdischargestatus!="Expired") 
+d <- d %>%filter(!gender%in%c("Unknown","Other",NA))
+f <- ggplot( d, aes(x=hour , fill = gender ))
+f+ geom_bar(  position = position_dodge())+
+  labs(x = "Time discharged from ICU for expired patients - Alive from ICU but Expired from hospital", y = "Count") + theme_classic()+ 
+  theme(axis.title.x = element_text(size = 14), axis.title.y = element_text(size = 14),legend.title=element_text("Gender"))+ guides(fill=guide_legend(title="Gender"))
+
+
+
+
+d1<-patient %>% filter(hospitaldischargestatus=="Expired" & unitdischargestatus!="Expired") 
+d1 <- d1 %>% filter(!gender%in%c("Unknown","Other",NA))
+f <- ggplot( d1, aes(x=hour0 , fill = gender ))
+f+ geom_bar(  position = position_dodge())+
+  labs(x = "Time discharged from hospital for expired patients - Alive from ICU but Expired from hospital", y = "Count") +
+  theme_classic()+ 
+  theme(axis.title.x = element_text(size = 14), axis.title.y = element_text(size = 14),legend.title=element_text("Gender"))+ guides(fill=guide_legend(title="Gender"))
+
+
+
+
+#######investigating the time between discharge from ICU and expiration
+
+
+#different diseases
+d <- patient %>% filter(unitdischargestatus=="Expired")
+d$apacheadmissiondx <- as.factor(d$apacheadmissiondx)
+d <- d %>% filter(!gender%in%c("Unknown","Other",NA))
+disease = c("Cardiac arrest",
+            "CHF, congestive heart failure",
+            "CVA, cerebrovascular accident/stroke",
+            "Sepsis, pulmonary",
+            "Sepsis, renal/UTI (including bladder)")
+
+d1 <- d %>% filter(apacheadmissiondx %in% disease)
+
+#d1 <- d1 %>% filter(apacheadmissiondx != "NA") 
+unique(d1$apacheadmissiondx)
+
+f <- ggplot( d1, aes(x=hour , fill = gender ))
+f+ geom_bar(  position = position_dodge())+
+  facet_wrap(~apacheadmissiondx, ncol=2)+
+  labs(x = "Time discharged from ICU for expired patients for different diseases", y = "Count") + theme_classic()+ 
+  theme(axis.title.x = element_text(size = 14), axis.title.y = element_text(size = 14),legend.position = 'none')
+
+disease = c("Cardiac arrest",
+            "CHF, congestive heart failure",
+            "CVA, cerebrovascular accident/stroke",
+            "Sepsis, pulmonary",
+            "Sepsis, renal/UTI (including bladder)")
+#------------------------------------------------------------------------------------------------
+# Alive 
+#------------------------------------------------------------------------------------------------
+d2 <- patient %>% filter(hospitaldischargestatus!="Expired",hospitaldischargestatus!="Expired")%>% 
+                  filter(!gender%in%c("Unknown","Other",NA))
+d0 <- patient %>% filter(!gender%in%c("Unknown","Other",NA))
+
+
+f <- ggplot( d2, aes(x=hour))
+f+ geom_bar( fill = "steelblue")+
+  labs(title = "UnitDischargeTime for alive patients") 
+
+
+
+d$unitdischargelocation <- as.factor(d$unitdischargelocation)
+levels(d$unitdischargelocation)
+
+
+
+###########################################################################################
+#------------------------------------------------------------------------------------------
+###########################################################################################
+#------------------------------------------------------------------------------------------
+
+caredata <- read_csv("carePlanCareProvider.csv.gz")
+
+caredata$activeupondischarge <- as.factor(caredata$activeupondischarge)
+levels(caredata$activeupondischarge)
+
+aa <- caredata %>% select(patientunitstayid,activeupondischarge )
+
+patient1 <- patient %>% merge(aa, by = "patientunitstayid" )
+
+
+d1<-patient1 %>% filter(unitdischargestatus=="Expired") %>% filter(activeupondischarge==FALSE)
+d1 <- d1 %>% filter(!gender%in%c("Unknown","Other",NA))
+f <- ggplot( d1, aes(x=hour  ))
+f+ geom_bar(  position = position_dodge())+
+  labs(x = "Time discharged from the ICU  for all patients (hr)", y = "Count") +
+  theme_classic()+ 
+  theme(axis.title.x = element_text(size = 14), axis.title.y = element_text(size = 14),legend.title=element_text("Gender"))+ guides(fill=guide_legend(title="Gender"))
+
+
+
+d2<-patient1 %>% filter(unitdischargestatus=="Expired") #%>% filter(activeupondischarge==TRUE)
+d2 <- d2 %>% filter(!gender%in%c("Unknown","Other",NA))
+f <- ggplot( d2, aes(x=hour, fill = activeupondischarge ))
+f+ geom_bar(  position = position_dodge())+
+  labs(x = "Time discharged from the ICU (hr)", y = "Count") +
+  theme_classic()+ 
+  theme(axis.title.x = element_text(size = 14), axis.title.y = element_text(size = 14),legend.title=element_text("Active physician\nupon discharge" , face = "bold" ))+ guides(fill=guide_legend(title="Active physician\nupon discharge"))+ 
+  scale_fill_manual( values = c("FALSE" = "royalblue3", "TRUE" = "red2"))
+
+
+
+d2<-patient1 %>% filter(hospitaldischargestatus=="Expired" & unitdischargestatus!="Expired") #%>% filter(activeupondischarge==TRUE)
+d2 <- d2 %>% filter(!gender%in%c("Unknown","Other",NA))
+f <- ggplot( d2, aes(x=hour, fill = activeupondischarge ))
+f+ geom_bar(  position = position_dodge())+
+  labs(x = "Time discharged from hospital for expired patients (hr)\n Alive from ICU - Expired from hospital", y = "Count") +
+  theme_classic()+ 
+  theme(axis.title.x = element_text(size = 14), axis.title.y = element_text(size = 14),legend.title=element_text("Active physician\nupon discharge" , face = "bold" ))+ guides(fill=guide_legend(title="Active physician\nupon discharge"))+ 
+  scale_fill_manual( values = c("FALSE" = "royalblue3", "TRUE" = "red2"))
+
+
+d2<-patient1  #%>% filter(activeupondischarge==TRUE)
+d2 <- d2 %>% filter(!gender%in%c("Unknown","Other",NA))
+f <- ggplot( d2, aes(x=hour, fill = activeupondischarge ))
+f+ geom_bar(  position = position_dodge())+
+  labs(x = "Time discharged from hospital for expired patients (hr)\n Alive from ICU - Expired from hospital", y = "Count") +
+  theme_classic()+ 
+  theme(axis.title.x = element_text(size = 14), axis.title.y = element_text(size = 14),legend.title=element_text("Active physician\nupon discharge" , face = "bold" ))+ guides(fill=guide_legend(title="Active physician\nupon discharge"))+ 
+  scale_fill_manual( values = c("FALSE" = "royalblue3", "TRUE" = "red2"))
+
+
+
+###########################################################################################
+#------------------------------------------------------------------------------------------
+###########################################################################################
+#------------------------------------------------------------------------------------------
+
+
+
+hospitaldata <- read_csv("hospital.csv.gz")
+
+
+patient2 <- patient %>% merge(hospitaldata, by = "hospitalid" )
+
+
+d4<-patient2 %>% filter(unitdischargestatus=="Expired") #%>% filter(teachingstatus==FALSE)
+d4 <- d4 %>% filter(!gender%in%c("Unknown","Other",NA))
+f <- ggplot( d4, aes(x=hour , fill = teachingstatus ))
+f+ geom_bar(  position = position_dodge())+
+  labs(x = "Time discharged from the ICU  for all patients (hr)", y = "Count") +
+  theme_classic()+ 
+  theme(axis.title.x = element_text(size = 14), axis.title.y = element_text(size = 14),legend.title=element_text("Teaching Status"))+ guides(fill=guide_legend(title="Teaching Status"))+
+  scale_fill_manual( values = c("FALSE" = "royalblue3", "TRUE" = "red2"))
+
+```
