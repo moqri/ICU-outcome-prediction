@@ -1,0 +1,161 @@
+---
+title: "Exploring Patient Table"
+output: rmarkdown::github_document
+---
+Author: [Atefeh Rajabalizadeh]
+
+The patinet table is a core part of the eICU-CRD and contains all information related to tracking patient unit stays. The table also contains patient demographics and hospital level information.
+
+
+### Loading libraries
+```{r message=FALSE}
+library(data.table)
+library(dplyr)
+library(magrittr)
+#library(plyr)
+library(knitr)
+library(ggplot2)
+library(visreg)
+library(rpart)
+library("caret")
+library(rpart.plot)
+library(corrplot)
+```
+
+```{r}
+# data_folder is the local path to your data
+dfPatient=fread('data/patient.csv')
+dfApache=fread('data/apachePatientResult.csv')
+dfApachePredVar=fread('data/apachePredVar.csv')
+df= merge(x = dfPatient, y = dfApache, by = "patientunitstayid", all = TRUE)
+dfForAgeGender= merge(x = dfApachePredVar, y = dfApache, by = "patientunitstayid", all = TRUE)
+```
+### Age
+```{r message=FALSE, warning=FALSE}
+df %<>% mutate(age_impute= (ifelse(age=='> 89',90, as.numeric(age))))
+age=df[!is.na(df$age_impute),]$age_impute
+
+dfForAgeGender %<>% mutate(age_impute= (ifelse(age=='> 89',90, as.numeric(age))))
+age=dfForAgeGender[!is.na(dfForAgeGender$age_impute),]$age_impute
+```
+
+###Apachi Score for different ethnicity
+```{r}
+
+NewData=df%>%select(c(age_impute,ethnicity,apachescore))%>%subset(ethnicity %in% c("Caucasian","African American"))%>%subset(apachescore!='')%>%subset(apachescore!=-1)%>%group_by(ethnicity, age_impute) %>% summarise(meanApachi=mean(apachescore))
+NewData<-na.omit(NewData)
+ggplot(NewData, aes(x=age_impute, y=meanApachi)) +
+ geom_point(aes(color=ethnicity))
+
+
+########5years
+b <- c(15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90)
+names=c("15-19","20-24","25-29","30-34","35-39","40-44","45-49","50-54","55-59","60-64","65-69","70-74","75-79","80-84","85+")
+NewData$BreakedAge=cut(NewData$age_impute, breaks = b, labels = names)
+NewData<-na.omit(NewData)
+
+
+
+ggplot(NewData,aes(x=BreakedAge, y=meanApachi,width=.45,fill=factor(ethnicity)))+
+  geom_bar(stat="identity",position="dodge")+
+  
+  guides(fill=guide_legend(title="Ethnicity")) +
+  xlab("Age")+ylab("APACHE score") +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1, size=10,color="black"))
+
+
+
+
+
+
+```
+####correlation of Apachi and Morality
+```{r}
+ApachiOutPut=df%>%select(c(apachescore,unitdischargestatus))%>%subset(apachescore!='')%>%subset(apachescore!=-1)%>%subset (unitdischargestatus %in% c("Alive","Expired"))
+ApachiOutPut$unitdischargestatus=as.factor(ApachiOutPut$unitdischargestatus)
+correlation <- cor(ApachiOutPut$apachescore,as.numeric(ApachiOutPut$unitdischargestatus))
+correlation
+
+ggplot(ApachiOutPut, aes( x=unitdischargestatus, y=apachescore)) + 
+  geom_violin(trim=FALSE)+ geom_boxplot(width=0.1)+xlab("ICU discharge status")+ylab("APACHE score") 
+
+```
+
+
+#most important disease
+```{r}
+DiseaseTable=df %>%subset(apacheadmissiondx %in% c("Cardiac arrest (with or without respiratory arrest; for respiratory arrest see Respiratory System)","CHF, congestive heart failure","CVA, cerebrovascular accident/stroke","Sepsis, pulmonary","Sepsis, renal/UTI (including bladder)"))%>% group_by(apacheadmissiondx) %>%
+  summarise(expired=sum(hospitaldischargestatus=="Expired"),total=sum(hospitaldischargestatus %in%c("Expired","Alive")),percentage=expired/total*100) 
+DiseaseTable<-na.omit(DiseaseTable)
+DiseaseTable<-filter (DiseaseTable, total>4500)
+DiseaseTable<-filter (DiseaseTable, percentage>10)
+DiseaseTable$diseaseId=as.numeric(as.factor(DiseaseTable$apacheadmissiondx))
+```
+#Box plot
+```{r, fig.height=8,fig.width=8}
+BoxPlot=df%>%subset(unitdischargestatus %in%c("Expired","Alive"))%>%subset(apacheadmissiondx %in% DiseaseTable$apacheadmissiondx)%>%subset(apachescore!="")%>%subset(apachescore!=-1)
+BoxPlot$apacheadmissiondx[which(BoxPlot$apacheadmissiondx=="Cardiac arrest (with or without respiratory arrest; for respiratory arrest see Respiratory System)")]<-"Cardiac arrest"
+# ati=BoxPlot%>%select (c("apacheadmissiondx","unitdischargestatus","apachescore"))%>%group_by(apacheadmissiondx,unitdischargestatus)%>%summarise(med=median(apachescore))
+ggplot(BoxPlot, aes(x=apacheadmissiondx, y=apachescore, fill=unitdischargestatus)) +
+    geom_boxplot()+theme(axis.text.x = element_text(angle = 45, hjust = 1, size=10,color="black"))+xlab("Admission diagnosis")+ylab("APACHE score")+guides(fill=guide_legend(title="ICU discharge status"))+
+scale_fill_manual("legend", values = c("Alive" = "#00AFBB", "Expired" = "#FF6666"))
+```	
+###Apachi Score for different Gender
+```{r}
+
+NewData=dfForAgeGender%>%select(c(age_impute,gender,apachescore))%>%subset(gender %in% c(0,1))%>%mutate (gender = ifelse(gender  %in%c("1"),"Female","Male"))%>%subset(apachescore!='')%>%subset(apachescore!=-1)%>%group_by(gender, age_impute) %>% summarise(meanApachi=mean(apachescore))
+NewData<-na.omit(NewData)
+NewData=NewData
+
+########5years
+b <- c(15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90)
+names=c("15-19","20-24","25-29","30-34","35-39","40-44","45-49","50-54","55-59","60-64","65-69","70-74","75-79","80-84","85+")
+NewData$BreakedAge=cut(NewData$age_impute, breaks = b, labels = names)
+NewData<-na.omit(NewData)
+
+
+
+ggplot(NewData,aes(x=BreakedAge, y=meanApachi,width=.45,fill=factor(gender)))+
+  geom_bar(stat="identity",position="dodge")+
+  
+  guides(fill=guide_legend(title="Gender")) +
+  xlab("Age")+ylab("APACHE score") +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1, size=10,color="black"))
+
+
+
+
+
+
+```
+
+
+###Apachi Score for different region
+```{r}
+
+NewData=df%>%select(c(age_impute,ethnicity,apachescore))%>%subset(ethnicity %in% c("Caucasian","African American"))%>%subset(apachescore!='')%>%group_by(ethnicity, age_impute) %>% summarise(meanApachi=mean(apachescore))
+NewData<-na.omit(NewData)
+ggplot(NewData, aes(x=age_impute, y=meanApachi)) +
+ geom_point(aes(color=ethnicity))
+
+
+b <- c(15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90)
+names=c("15-19","20-24","25-29","30-34","35-39","40-44","45-49","50-54","55-59","60-64","65-69","70-74","75-79","80-84","85+")
+NewData$BreakedAge=cut(NewData$age_impute, breaks = b, labels = names)
+NewData<-na.omit(NewData)
+
+
+
+ggplot(NewData,aes(x=BreakedAge, y=meanApachi,width=.45,fill=factor(ethnicity)))+
+  geom_bar(stat="identity",position="dodge")+
+  
+  guides(fill=guide_legend(title="Ethnicity")) +
+  xlab("Age")+ylab("APACHE score") +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1, size=10,color="black"))
+
+
+
+
+
+
+```
